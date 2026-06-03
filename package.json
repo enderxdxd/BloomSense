@@ -1,0 +1,24 @@
+{
+  "name": "bloomsense",
+  "version": "0.1.0",
+  "description": "AI-powered floral experience platform",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/enderxdxd/BloomSense.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/enderxdxd/BloomSense/issues"
+  },
+  "homepage": "https://github.com/enderxdxd/BloomSense#readme",
+  "private": true,
+  "dependencies": {
+    "openai": "^6.41.0",
+    "zod": "^4.4.3"
+  }
+}
