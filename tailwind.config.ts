@@ -9,12 +9,16 @@ const config: Config = {
     extend: {
       colors: {
         bloom: {
-          primary: "#6D2E46", // deep berry — primary CTA
-          rose: "#A26769",    // dusty rose — accents
-          sage: "#7A9E7E",    // sage green — secondary
-          gold: "#C8A882",    // warm gold — highlights
+          primary: "#6D2E46", // deep berry — headers, buttons, accents
+          rose: "#A26769",    // dusty rose — secondary text, borders
+          sage: "#7A9E7E",    // sage green — success, leaf elements
+          gold: "#C8A882",    // warm gold — highlights, badges
           cream: "#F9F5F0",   // off-white — backgrounds
         },
+      },
+      fontFamily: {
+        serif: ["var(--font-serif)", "Georgia", "ui-serif", "serif"],
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
     },
   },
