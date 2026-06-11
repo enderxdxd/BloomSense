@@ -19,13 +19,22 @@ const VALID_INPUT = {
 };
 
 const VALID_PROFILE = {
-  profileName: "Romantic Dawn",
+  profileName: "Modern Romance",
+  tagline: "A tender contemporary love letter in petals",
   description:
     "A soft, sun-kissed arrangement that feels like the first light of an early garden morning, layered with quiet intimacy.",
-  dominantFlowers: ["garden rose", "ranunculus", "spray rose"],
+  narrative:
+    "This arrangement opens with the cool hush of dawn, when garden roses are still folded against the chill and ranunculus discs catch the first thread of light. Anemones punctuate the cluster with quiet drama, their dark centers anchoring the softness around them. The palette stays close to skin and pearl, a deliberate restraint that lets texture do the talking. Choose a low ceramic compote and let the stems lean toward the recipient rather than standing soldier-straight. Bring it close enough to touch.",
+  dominantFlowers: ["garden rose", "ranunculus", "anemone", "sweet pea"],
+  signatureFlower: "garden rose",
   colorPalette: ["blush", "ivory", "soft peach"],
   moodKeywords: ["romantic", "tender", "luminous"],
   recommendedArrangementStyle: "hand-tied",
+  stylingNotes: [
+    "Place the arrangement on a low credenza at eye level when seated, so the cascading sweet peas read sculptural.",
+    "Use a matte ceramic compote rather than glass — it absorbs morning light and flatters the blush tones.",
+    "Refresh the water on day three and recut the stems on a steep angle for another four days of bloom.",
+  ],
 };
 
 function mockCompletion(content: unknown) {
@@ -81,6 +90,20 @@ describe("POST /api/quiz/submit", () => {
 
     const json = (await res.json()) as { error: string };
     expect(json.error).toMatch(/schema/i);
+    expect(createMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects a profile whose signatureFlower is not in dominantFlowers", async () => {
+    const inconsistent = {
+      ...VALID_PROFILE,
+      signatureFlower: "lily-of-the-valley",
+    };
+    createMock
+      .mockResolvedValueOnce(mockCompletion(inconsistent))
+      .mockResolvedValueOnce(mockCompletion(inconsistent));
+
+    const res = await POST(makeRequest(VALID_INPUT));
+    expect(res.status).toBe(502);
     expect(createMock).toHaveBeenCalledTimes(2);
   });
 });

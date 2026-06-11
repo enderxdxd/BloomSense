@@ -10,20 +10,28 @@ import {
 
 export const runtime = "nodejs";
 
-const SYSTEM_PROMPT = `You are BloomSense, an AI floral stylist. Given a customer's quiz answers about a floral occasion, produce a structured "floral personality profile" used to drive product recommendations and a mood-board preview.
+const SYSTEM_PROMPT = `You are BloomSense, an editorial AI floral stylist writing for a high-end magazine. Given a customer's quiz answers, produce a polished "floral personality profile" — short, evocative, never generic.
 
-Respond with valid JSON that matches this exact schema (no extra keys, no markdown):
+Respond with VALID JSON matching this exact schema (no extra keys, no markdown, no code fences):
 
 {
-  "profileName": string,               // short evocative name, 1-60 chars (e.g. "Romantic Dawn")
-  "description": string,               // 2-3 sentences, 20-500 chars, second-person, warm
-  "dominantFlowers": string[],         // 3-5 specific real flowers (e.g. "garden rose", "ranunculus")
-  "colorPalette": string[],            // 3-5 named or hex colors (e.g. "blush", "#C8A882")
-  "moodKeywords": string[],            // 3-5 single-word adjectives (e.g. "romantic", "airy")
-  "recommendedArrangementStyle": string // exactly one of: ${ARRANGEMENT_STYLES.join(", ")}
+  "profileName": string,                  // 1-60 chars, evocative two-word name (e.g. "Modern Romance", "Dusk Ceremony")
+  "tagline": string,                      // 8-120 chars, italic subhead (e.g. "A tender contemporary love letter in petals")
+  "description": string,                  // 2-3 sentences, 20-500 chars, second-person warm intro
+  "narrative": string,                    // 4-6 sentences, 120-900 chars, editorial body copy. Reference the occasion, the recipient, the chosen flowers and palette, the emotional register. Specific, sensory, never saccharine.
+  "dominantFlowers": string[],            // 3-5 specific real flowers (e.g. "garden rose", "ranunculus", "anemone"). No generic "flower".
+  "signatureFlower": string,              // exactly one entry from dominantFlowers — the hero flower
+  "colorPalette": string[],               // 3-5 colors, named ("blush", "ivory") or hex ("#C8A882")
+  "moodKeywords": string[],               // 3-5 single-word adjectives (e.g. "romantic", "airy", "tender")
+  "recommendedArrangementStyle": string,  // exactly one of: ${ARRANGEMENT_STYLES.join(", ")}
+  "stylingNotes": string[]                // exactly 3 actionable styling tips, each 10-220 chars (placement, light, vessel, season, or pairing)
 }
 
-Be thoughtful: align the palette and flowers to the stated occasion, vibe, and any color preferences. Pick specific real flowers (no generic "flowers"). Avoid clichés where possible.`;
+Rules:
+- signatureFlower MUST appear in dominantFlowers.
+- stylingNotes MUST be exactly 3 entries — no more, no less — each a complete actionable sentence.
+- Be specific. Reference actual flower species, vessel materials, light qualities, time of day, textures.
+- Never use the phrases "as an AI" or "I think". You are the voice of the magazine.`;
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -73,7 +81,7 @@ async function generateProfileWithRetry(
 
   const secondAttempt = await generateProfile(input, {
     correction:
-      "Your previous response did not match the schema. Return JSON with EXACTLY these keys: profileName, description, dominantFlowers (3-5 strings), colorPalette (3-5 strings), moodKeywords (3-5 strings), recommendedArrangementStyle.",
+      "Your previous response did not match the schema. Return JSON with EXACTLY these keys: profileName, tagline, description, narrative, dominantFlowers (3-5), signatureFlower (must be one of dominantFlowers), colorPalette (3-5), moodKeywords (3-5), recommendedArrangementStyle, stylingNotes (exactly 3 strings).",
   });
   if (secondAttempt.kind === "ok") return secondAttempt.profile;
 
@@ -106,13 +114,20 @@ async function generateProfile(
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.3,
+      temperature: 0.8,
       response_format: { type: "json_object" },
       messages,
     });
     raw = completion.choices[0]?.message?.content ?? null;
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("[quiz/submit] OpenAI call failed:", err);
+    const status = (err as { status?: number }).status;
+    const code = (err as { code?: string }).code;
+    if (status === 429 || code === "insufficient_quota") {
+      throw new AIError(
+        "The AI service is temporarily unavailable due to quota limits. Please try again later.",
+      );
+    }
     throw new AIError("Failed to reach the AI service.");
   }
 

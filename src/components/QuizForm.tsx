@@ -150,7 +150,7 @@ export function QuizForm({
         throw new Error(body?.error ?? `Request failed with ${res.status}`);
       }
 
-      const profile = (await res.json()) as FloralProfile;
+      const { profile } = (await res.json()) as { profile: FloralProfile };
       onProfileGenerated(profile);
     } catch (err) {
       onError(err instanceof Error ? err.message : "Unknown error");
