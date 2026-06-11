@@ -5,51 +5,87 @@ import { ErrorState } from "@/components/ErrorState";
 import { FloralProfileCard } from "@/components/FloralProfileCard";
 import { FloralProfileSkeleton } from "@/components/FloralProfileSkeleton";
 import { QuizForm } from "@/components/QuizForm";
-import type { FloralProfile } from "@/lib/schema";
+import type { FloralProfile, QuizInput } from "@/lib/schema";
 
-type HeroStatus = "idle" | "loading" | "success" | "error";
+type ImageStatus = "idle" | "loading" | "success" | "error";
 
 export default function HomePage() {
   const [profile, setProfile] = useState<FloralProfile | null>(null);
+  const [occasion, setOccasion] = useState<QuizInput["occasion"] | null>(null);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
+
   const [heroUrl, setHeroUrl] = useState<string | null>(null);
-  const [heroStatus, setHeroStatus] = useState<HeroStatus>("idle");
+  const [heroStatus, setHeroStatus] = useState<ImageStatus>("idle");
+
+  const [sceneUrl, setSceneUrl] = useState<string | null>(null);
+  const [sceneStatus, setSceneStatus] = useState<ImageStatus>("idle");
 
   useEffect(() => {
-    if (profile === null) return;
+    if (profile === null || occasion === null) return;
 
     let cancelled = false;
     setHeroStatus("loading");
     setHeroUrl(null);
+    setSceneStatus("loading");
+    setSceneUrl(null);
 
-    void (async () => {
-      try {
-        const res = await fetch("/api/profile/hero", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            signatureFlower: profile.signatureFlower,
-            arrangementStyle: profile.recommendedArrangementStyle,
-            colorPalette: profile.colorPalette,
-          }),
-        });
+    const heroPromise = fetch("/api/profile/hero", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        signatureFlower: profile.signatureFlower,
+        arrangementStyle: profile.recommendedArrangementStyle,
+        colorPalette: profile.colorPalette,
+      }),
+    })
+      .then(async (res) => {
         if (!res.ok) throw new Error(`Hero failed: ${res.status}`);
-        const data = (await res.json()) as { url: string };
+        return (await res.json()) as { url: string };
+      })
+      .then((data) => {
         if (cancelled) return;
         setHeroUrl(data.url);
         setHeroStatus("success");
-      } catch (err) {
+      })
+      .catch((err) => {
         if (cancelled) return;
         console.error("Hero image generation failed:", err);
         setHeroStatus("error");
-      }
-    })();
+      });
+
+    const scenePromise = fetch("/api/profile/scene", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        occasion,
+        signatureFlower: profile.signatureFlower,
+        dominantFlowers: profile.dominantFlowers,
+        arrangementStyle: profile.recommendedArrangementStyle,
+        colorPalette: profile.colorPalette,
+      }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Scene failed: ${res.status}`);
+        return (await res.json()) as { url: string };
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setSceneUrl(data.url);
+        setSceneStatus("success");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Scene image generation failed:", err);
+        setSceneStatus("error");
+      });
+
+    void Promise.allSettled([heroPromise, scenePromise]);
 
     return () => {
       cancelled = true;
     };
-  }, [profile]);
+  }, [profile, occasion]);
 
   function handleRetry() {
     setError("");
@@ -74,8 +110,9 @@ export default function HomePage() {
 
         <div className="mx-auto max-w-2xl">
           <QuizForm
-            onProfileGenerated={(p) => {
+            onProfileGenerated={(p, submittedOccasion) => {
               setProfile(p);
+              setOccasion(submittedOccasion);
               setError("");
             }}
             onError={setError}
@@ -96,6 +133,9 @@ export default function HomePage() {
             profile={profile}
             heroImageUrl={heroUrl}
             heroImageStatus={heroStatus}
+            sceneImageUrl={sceneUrl}
+            sceneImageStatus={sceneStatus}
+            occasion={occasion}
           />
         )}
       </div>

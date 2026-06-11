@@ -39,23 +39,29 @@ export async function POST(req: NextRequest) {
   try {
     const openai = getOpenAIClient();
     const result = await openai.images.generate({
-      model: "dall-e-3",
+      model: "gpt-image-1",
       prompt,
-      size: "1792x1024",
-      quality: "standard",
+      size: "1536x1024",
+      quality: "medium",
       n: 1,
     });
 
-    const url = result.data?.[0]?.url;
+    const item = result.data?.[0];
+    const url =
+      item?.url ??
+      (item?.b64_json
+        ? `data:image/png;base64,${item.b64_json}`
+        : null);
+
     if (!url) {
       return NextResponse.json(
-        { error: "Image service returned no URL." },
+        { error: "Image service returned no image data." },
         { status: 502 },
       );
     }
 
     return NextResponse.json(
-      { url, revisedPrompt: result.data?.[0]?.revised_prompt ?? null },
+      { url, revisedPrompt: (item as { revised_prompt?: string })?.revised_prompt ?? null },
       { status: 200 },
     );
   } catch (err: unknown) {

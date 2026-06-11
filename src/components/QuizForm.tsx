@@ -7,7 +7,10 @@ import type { FloralProfile, QuizInput } from "@/lib/schema";
 import { QuizInputSchema } from "@/lib/schema";
 
 interface QuizFormProps {
-  onProfileGenerated: (profile: FloralProfile) => void;
+  onProfileGenerated: (
+    profile: FloralProfile,
+    occasion: QuizInput["occasion"],
+  ) => void;
   onError: (message: string) => void;
   onLoadingChange: (loading: boolean) => void;
 }
@@ -98,6 +101,7 @@ export function QuizForm({
 }: QuizFormProps) {
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<DraftAnswers>(EMPTY_DRAFT);
+  const [submitting, setSubmitting] = useState(false);
 
   const totalSteps = STEP_TITLES.length;
   const canAdvance = isStepValid(step, draft);
@@ -118,6 +122,8 @@ export function QuizForm({
   }
 
   async function handleSubmit() {
+    if (submitting) return;
+
     const parseResult = QuizInputSchema.safeParse({
       occasion: draft.occasion,
       vibe: draft.vibe,
@@ -133,6 +139,7 @@ export function QuizForm({
       return;
     }
 
+    setSubmitting(true);
     onLoadingChange(true);
     onError("");
 
@@ -151,16 +158,22 @@ export function QuizForm({
       }
 
       const { profile } = (await res.json()) as { profile: FloralProfile };
-      onProfileGenerated(profile);
+      onProfileGenerated(profile, parseResult.data.occasion);
     } catch (err) {
       onError(err instanceof Error ? err.message : "Unknown error");
     } finally {
+      setSubmitting(false);
       onLoadingChange(false);
     }
   }
 
   return (
-    <section className="rounded-2xl border border-bloom-gold/40 bg-white p-6 shadow-sm sm:p-8">
+    <section
+      aria-busy={submitting}
+      className={`rounded-2xl border border-bloom-gold/40 bg-white p-6 shadow-sm transition-opacity sm:p-8 ${
+        submitting ? "pointer-events-none opacity-70" : ""
+      }`}
+    >
       <header className="flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-bloom-sage">
           Step {step + 1} of {totalSteps}
@@ -233,7 +246,7 @@ export function QuizForm({
         <button
           type="button"
           onClick={() => setStep((s) => Math.max(0, s - 1))}
-          disabled={step === 0}
+          disabled={step === 0 || submitting}
           className="rounded-full border border-bloom-rose/40 px-5 py-2.5 text-sm font-medium text-bloom-rose transition hover:bg-bloom-cream disabled:invisible"
         >
           Back
@@ -243,7 +256,7 @@ export function QuizForm({
           <button
             type="button"
             onClick={() => setStep((s) => s + 1)}
-            disabled={!canAdvance}
+            disabled={!canAdvance || submitting}
             className="rounded-full bg-bloom-primary px-6 py-2.5 text-sm font-medium text-bloom-cream transition hover:bg-bloom-rose disabled:cursor-not-allowed disabled:opacity-50"
           >
             Next
@@ -252,14 +265,48 @@ export function QuizForm({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={!canAdvance}
-            className="rounded-full bg-bloom-primary px-6 py-2.5 text-sm font-medium text-bloom-cream transition hover:bg-bloom-rose disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!canAdvance || submitting}
+            aria-busy={submitting}
+            className="inline-flex min-w-[200px] items-center justify-center gap-2 rounded-full bg-bloom-primary px-6 py-2.5 text-sm font-medium text-bloom-cream transition hover:bg-bloom-rose disabled:cursor-not-allowed disabled:opacity-70"
           >
-            Generate my profile
+            {submitting ? (
+              <>
+                <Spinner />
+                <span>Crafting your profile…</span>
+              </>
+            ) : (
+              <span>Generate my profile</span>
+            )}
           </button>
         )}
       </footer>
     </section>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="h-4 w-4 animate-spin"
+      fill="none"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeOpacity="0.25"
+        strokeWidth="3"
+      />
+      <path
+        d="M22 12a10 10 0 0 0-10-10"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 

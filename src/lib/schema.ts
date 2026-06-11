@@ -51,6 +51,16 @@ export const HeroImageRequestSchema = z.object({
   vibe: z.array(z.string().trim().min(1)).min(0).max(5).optional(),
 });
 
+export const SceneImageRequestSchema = z.object({
+  occasion: z.enum(OCCASIONS),
+  signatureFlower: z.string().trim().min(1).max(60),
+  dominantFlowers: z.array(z.string().trim().min(1)).min(1).max(5),
+  arrangementStyle: z.enum(ARRANGEMENT_STYLES),
+  colorPalette: z.array(z.string().trim().min(1)).min(1).max(5),
+  vibe: z.array(z.string().trim().min(1)).min(0).max(5).optional(),
+});
+
 export type QuizInput = z.infer<typeof QuizInputSchema>;
 export type FloralProfile = z.infer<typeof FloralProfileSchema>;
 export type HeroImageRequest = z.infer<typeof HeroImageRequestSchema>;
+export type SceneImageRequest = z.infer<typeof SceneImageRequestSchema>;

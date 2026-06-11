@@ -52,6 +52,12 @@ export function FloralProfileSkeleton() {
             ))}
           </div>
         </div>
+
+        <div className="mt-14 border-t border-bloom-cream pt-10">
+          <div className="h-3 w-44 rounded bg-bloom-sage/30" />
+          <div className="mt-2 h-4 w-2/3 rounded bg-bloom-rose/20" />
+          <div className="mt-6 aspect-[3/2] w-full rounded-2xl bg-gradient-to-br from-bloom-cream via-bloom-cream to-bloom-gold/20" />
+        </div>
       </div>
     </div>
   );
