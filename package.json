@@ -25,6 +25,7 @@
   },
   "homepage": "https://github.com/enderxdxd/BloomSense#readme",
   "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
