@@ -8,6 +8,13 @@ jest.mock("@/lib/openai", () => ({
   }),
 }));
 
+jest.mock("@/lib/prisma", () => ({
+  prisma: {
+    user: { upsert: jest.fn().mockResolvedValue({}) },
+    floralProfile: { upsert: jest.fn().mockResolvedValue({}) },
+  },
+}));
+
 import { POST } from "@/app/api/quiz/submit/route";
 
 const VALID_INPUT = {
