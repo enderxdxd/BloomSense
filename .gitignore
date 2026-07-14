@@ -35,5 +35,7 @@ next-env.d.ts
 
 # coverage
 coverage/
+playwright-report/
+test-results/
 
 /generated/prisma
