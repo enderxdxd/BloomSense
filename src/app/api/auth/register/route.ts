@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { authLimiter, clientKey, enforceRateLimit } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,9 @@ const RegisterSchema = z.object({
 const BCRYPT_ROUNDS = 12;
 
 export async function POST(req: NextRequest) {
+  const blocked = await enforceRateLimit(authLimiter, clientKey(req));
+  if (blocked) return blocked;
+
   let body: unknown;
   try {
     body = await req.json();

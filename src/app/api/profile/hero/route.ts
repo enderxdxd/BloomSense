@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOpenAIClient } from "@/lib/openai";
+import { aiLimiter, clientKey, enforceRateLimit } from "@/lib/ratelimit";
 import { HeroImageRequestSchema } from "@/lib/schema";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
+  const blocked = await enforceRateLimit(aiLimiter, clientKey(req));
+  if (blocked) return blocked;
+
   let body: unknown;
   try {
     body = await req.json();

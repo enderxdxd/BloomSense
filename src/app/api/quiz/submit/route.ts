@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getOpenAIClient } from "@/lib/openai";
 import { prisma } from "@/lib/prisma";
+import { aiLimiter, clientKey, enforceRateLimit } from "@/lib/ratelimit";
 import {
   ARRANGEMENT_STYLES,
   FloralProfileSchema,
@@ -39,6 +40,9 @@ Rules:
 - Never use the phrases "as an AI" or "I think". You are the voice of the magazine.`;
 
 export async function POST(req: NextRequest) {
+  const blocked = await enforceRateLimit(aiLimiter, clientKey(req));
+  if (blocked) return blocked;
+
   let body: unknown;
   try {
     body = await req.json();
