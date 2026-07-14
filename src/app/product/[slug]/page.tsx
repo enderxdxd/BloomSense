@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/shop/AddToCart";
-import { ProductImage } from "@/components/shop/ProductImage";
+import { ProductVisual } from "@/components/shop/ProductVisual";
 import { CATEGORY_LABELS, getProductBySlug } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
@@ -43,11 +43,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
         <div className="grid gap-8 overflow-hidden rounded-3xl border border-bloom-gold/30 bg-white shadow-sm lg:grid-cols-2">
           <div className="relative aspect-[4/3] w-full bg-bloom-cream lg:aspect-auto lg:min-h-[480px]">
-            <ProductImage
+            <ProductVisual
               src={product.imageUrl}
               alt={product.name}
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              priority
+              featured={product.category === "WEDDING_PACKAGE"}
             />
           </div>
 
