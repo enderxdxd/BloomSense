@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
+import { SiteHeader } from "@/components/SiteHeader";
+import { CartDrawer } from "@/components/shop/CartDrawer";
 import "./globals.css";
 
 const serif = Cormorant_Garamond({
@@ -28,7 +30,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${serif.variable} ${sans.variable}`}>
-      <body className="min-h-screen">{children}</body>
+      <body className="min-h-screen">
+        <SiteHeader />
+        {children}
+        <CartDrawer />
+      </body>
     </html>
   );
 }
