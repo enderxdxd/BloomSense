@@ -50,10 +50,21 @@ function mockCompletion(content: unknown) {
   };
 }
 
-function makeRequest(body: unknown): NextRequest {
+let ipCounter = 0;
+
+/**
+ * Each request gets a unique x-forwarded-for by default so the module-level
+ * in-memory rate limiter never trips across unrelated tests. Tests exercising
+ * the limiter itself pass a fixed ip.
+ */
+function makeRequest(body: unknown, ip?: string): NextRequest {
+  ipCounter += 1;
   return new NextRequest("http://localhost/api/quiz/submit", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-forwarded-for": ip ?? `10.0.0.${ipCounter}`,
+    },
     body: JSON.stringify(body),
   });
 }
@@ -112,5 +123,20 @@ describe("POST /api/quiz/submit", () => {
     const res = await POST(makeRequest(VALID_INPUT));
     expect(res.status).toBe(502);
     expect(createMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns 429 with Retry-After on the 6th request in a minute from the same client", async () => {
+    const sameIp = "203.0.113.7";
+    // Invalid body: the limiter is checked BEFORE validation, so these
+    // consume budget without ever reaching OpenAI.
+    for (let i = 0; i < 5; i++) {
+      const res = await POST(makeRequest({ bad: "input" }, sameIp));
+      expect(res.status).toBe(400);
+    }
+
+    const sixth = await POST(makeRequest({ bad: "input" }, sameIp));
+    expect(sixth.status).toBe(429);
+    expect(Number(sixth.headers.get("Retry-After"))).toBeGreaterThan(0);
+    expect(createMock).not.toHaveBeenCalled();
   });
 });
