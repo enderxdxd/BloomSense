@@ -67,10 +67,12 @@ const VALID_INPUT = {
   preferredColors: ["blush", "ivory"],
 };
 
+// The route presents products to the model under short keys p1..pN
+// (in snapshot order) and maps them back to real ids server-side.
 const VALID_RECOMMENDATIONS = [
-  { productId: "prod_rose", reason: "Garden roses echo your signature bloom." },
-  { productId: "prod_peony", reason: "Peonies carry the same soft romance." },
-  { productId: "prod_stem", reason: "A sculptural counterpoint for the table." },
+  { productId: "p1", reason: "Garden roses echo your signature bloom." },
+  { productId: "p2", reason: "Peonies carry the same soft romance." },
+  { productId: "p3", reason: "A sculptural counterpoint for the table." },
 ];
 
 const VALID_AI_RESPONSE = {
@@ -153,7 +155,10 @@ describe("POST /api/quiz/submit", () => {
         typeof m.content === "string" && m.content.startsWith("CATALOG"),
     );
     expect(catalogMessage).toBeDefined();
-    expect(catalogMessage.content).toContain("prod_rose");
+    expect(catalogMessage.content).toContain('"productId":"p1"');
+    expect(catalogMessage.content).toContain("Blush Garden Romance");
+    // Fragile raw cuids must never be shown to the model.
+    expect(catalogMessage.content).not.toContain("prod_rose");
   });
 
   it("returns 400 when the input fails schema validation", async () => {
@@ -200,7 +205,7 @@ describe("POST /api/quiz/submit", () => {
       ...VALID_AI_RESPONSE,
       recommendations: [
         ...VALID_RECOMMENDATIONS.slice(0, 2),
-        { productId: "prod_hallucinated", reason: "This one does not exist." },
+        { productId: "p99", reason: "This one does not exist." },
       ],
     };
     createMock
@@ -211,7 +216,7 @@ describe("POST /api/quiz/submit", () => {
     expect(res.status).toBe(502);
 
     const json = (await res.json()) as { issues: { recommendations: string } };
-    expect(JSON.stringify(json.issues)).toContain("prod_hallucinated");
+    expect(JSON.stringify(json.issues)).toContain("p99");
     expect(createMock).toHaveBeenCalledTimes(2);
   });
 
@@ -219,7 +224,7 @@ describe("POST /api/quiz/submit", () => {
     const invented = {
       ...VALID_AI_RESPONSE,
       recommendations: [
-        { productId: "prod_fake", reason: "Hallucinated product reference." },
+        { productId: "p42", reason: "Hallucinated product reference." },
         ...VALID_RECOMMENDATIONS.slice(0, 2),
       ],
     };
