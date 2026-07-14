@@ -9,7 +9,7 @@ import {
 } from "@/lib/cart-store";
 
 const NAV_LINKS = [
-  { href: "/", label: "Quiz" },
+  { href: "/quiz", label: "Quiz" },
   { href: "/catalog", label: "Catalog" },
   { href: "/orders", label: "Orders" },
 ] as const;
