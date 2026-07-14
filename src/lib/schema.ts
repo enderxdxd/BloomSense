@@ -98,6 +98,19 @@ export const SceneImageRequestSchema = z.object({
   vibe: z.array(z.string().trim().min(1)).min(0).max(5).optional(),
 });
 
+export const OrderCreateSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        productId: z.string().trim().min(1).max(60),
+        quantity: z.number().int().min(1).max(10),
+      }),
+    )
+    .min(1)
+    .max(20),
+});
+
+export type OrderCreateInput = z.infer<typeof OrderCreateSchema>;
 export type QuizInput = z.infer<typeof QuizInputSchema>;
 export type FloralProfile = z.infer<typeof FloralProfileSchema>;
 export type AIQuizResponse = z.infer<typeof AIQuizResponseSchema>;
