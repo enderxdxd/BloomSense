@@ -1,5 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { Category } from "../../generated/prisma/enums";
+import {
+  CATEGORY_LABELS,
+  isSortOption,
+  SORT_OPTIONS,
+  type SortOption,
+} from "@/lib/catalog-shared";
+
+export { CATEGORY_LABELS, SORT_OPTIONS, isSortOption };
+export type { SortOption };
 
 /** Product shape safe to pass to client components (Decimal → number). */
 export interface CatalogProduct {
@@ -13,16 +22,6 @@ export interface CatalogProduct {
   imageUrl: string;
 }
 
-export const CATEGORY_LABELS: Record<Category, string> = {
-  BOUQUET: "Bouquets",
-  ARRANGEMENT: "Arrangements",
-  SINGLE_STEM: "Single stems",
-  WEDDING_PACKAGE: "Wedding packages",
-};
-
-export const SORT_OPTIONS = ["newest", "price-asc", "price-desc"] as const;
-export type SortOption = (typeof SORT_OPTIONS)[number];
-
 export interface CatalogQuery {
   category?: Category;
   minPrice?: number;
@@ -32,10 +31,6 @@ export interface CatalogQuery {
 
 export function isCategory(value: string): value is Category {
   return value in CATEGORY_LABELS;
-}
-
-export function isSortOption(value: string): value is SortOption {
-  return (SORT_OPTIONS as readonly string[]).includes(value);
 }
 
 export async function listProducts(

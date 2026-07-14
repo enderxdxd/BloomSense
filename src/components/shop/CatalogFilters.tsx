@@ -18,7 +18,7 @@ function buildHref(query: CatalogQuery, patch: Partial<CatalogQuery>): string {
 
 export function CatalogFilters({ query }: CatalogFiltersProps) {
   const categories = Object.entries(CATEGORY_LABELS) as Array<
-    [keyof typeof CATEGORY_LABELS, string]
+    [NonNullable<CatalogQuery["category"]>, string]
   >;
 
   return (

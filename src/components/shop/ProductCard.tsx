@@ -1,10 +1,9 @@
 import Link from "next/link";
-import type { CatalogProduct } from "@/lib/products";
-import { CATEGORY_LABELS } from "@/lib/products";
+import { categoryLabel, type ProductCardData } from "@/lib/catalog-shared";
 import { ProductImage } from "./ProductImage";
 
 interface ProductCardProps {
-  product: CatalogProduct;
+  product: ProductCardData;
   matchReason?: string;
 }
 
@@ -33,7 +32,7 @@ export function ProductCard({ product, matchReason }: ProductCardProps) {
 
       <div className="flex flex-1 flex-col p-4 sm:p-5">
         <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-bloom-sage">
-          {CATEGORY_LABELS[product.category]}
+          {categoryLabel(product.category)}
         </p>
         <h3 className="mt-1.5 font-serif text-lg font-semibold leading-snug text-bloom-primary group-hover:text-bloom-rose">
           {product.name}
@@ -42,11 +41,11 @@ export function ProductCard({ product, matchReason }: ProductCardProps) {
           <p className="mt-2 text-xs italic leading-relaxed text-bloom-rose">
             “{matchReason}”
           </p>
-        ) : (
+        ) : product.description ? (
           <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-bloom-primary/70">
             {product.description}
           </p>
-        )}
+        ) : null}
         <p className="mt-auto pt-4 font-serif text-xl font-semibold text-bloom-primary">
           ${product.price.toFixed(2)}
         </p>
