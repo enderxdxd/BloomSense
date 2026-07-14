@@ -49,18 +49,6 @@ export default function CheckoutPage() {
     );
   }
 
-  if (!publishableKey || !stripePromise) {
-    return (
-      <CheckoutShell>
-        <p className="rounded-xl border border-bloom-gold/40 bg-bloom-cream p-4 text-sm text-bloom-primary">
-          Payments aren&apos;t configured yet — the server is missing the
-          Stripe keys. Add <code>STRIPE_SECRET_KEY</code> and{" "}
-          <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> to enable checkout.
-        </p>
-      </CheckoutShell>
-    );
-  }
-
   async function createOrder() {
     setCreating(true);
     setError("");
@@ -144,7 +132,9 @@ export default function CheckoutPage() {
         </section>
 
         <section aria-label="Payment">
-          {order === null ? (
+          {!publishableKey || !stripePromise ? (
+            <PaymentConfigNotice />
+          ) : order === null ? (
             <div className="flex h-full flex-col items-start justify-center gap-4">
               {error !== "" && (
                 <p role="alert" className="text-sm text-red-700">
@@ -185,6 +175,16 @@ export default function CheckoutPage() {
         </section>
       </div>
     </CheckoutShell>
+  );
+}
+
+function PaymentConfigNotice() {
+  return (
+    <p className="rounded-xl border border-bloom-gold/40 bg-bloom-cream p-4 text-sm text-bloom-primary">
+      Payments aren&apos;t configured yet — the server is missing the Stripe
+      keys. Add <code>STRIPE_SECRET_KEY</code> and{" "}
+      <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> to enable checkout.
+    </p>
   );
 }
 

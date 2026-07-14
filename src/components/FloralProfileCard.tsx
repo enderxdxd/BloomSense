@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useReducedMotion } from "@/lib/useReducedMotion";
 import type { FloralProfile, QuizInput } from "@/lib/schema";
 
 type ImageStatus = "idle" | "loading" | "success" | "error";
@@ -30,6 +31,31 @@ const fadeUp = {
 
 const sectionTransition = { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const };
 
+function fadeUpMotion(reducedMotion: boolean, delay = 0) {
+  if (reducedMotion) {
+    return {
+      initial: false,
+      animate: { opacity: 1, y: 0 },
+      transition: { duration: 0 },
+    };
+  }
+
+  return {
+    ...fadeUp,
+    transition: { ...sectionTransition, delay },
+  };
+}
+
+function fadeMotion(reducedMotion: boolean, duration: number) {
+  return reducedMotion
+    ? { initial: false, animate: { opacity: 1 }, transition: { duration: 0 } }
+    : {
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        transition: { duration },
+      };
+}
+
 export function FloralProfileCard({
   profile,
   heroImageUrl,
@@ -38,24 +64,23 @@ export function FloralProfileCard({
   sceneImageStatus,
   occasion,
 }: FloralProfileCardProps) {
+  const reducedMotion = useReducedMotion();
   const sceneLabel = occasion ? SCENE_LABELS[occasion] : "Your space, imagined";
   return (
     <motion.article
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
+      {...fadeMotion(reducedMotion, 0.5)}
       className="mt-12 overflow-hidden rounded-3xl border border-bloom-gold/30 bg-white shadow-[0_20px_60px_-30px_rgba(109,46,70,0.35)]"
     >
       <HeroImage
         status={heroImageStatus}
         url={heroImageUrl}
         signatureFlower={profile.signatureFlower}
+        reducedMotion={reducedMotion}
       />
 
       <div className="px-6 pb-12 pt-10 sm:px-12 sm:pb-16 sm:pt-14">
         <motion.header
-          {...fadeUp}
-          transition={{ ...sectionTransition, delay: 0.05 }}
+          {...fadeUpMotion(reducedMotion, 0.05)}
           className="border-b border-bloom-cream pb-8"
         >
           <p className="text-xs font-medium uppercase tracking-[0.32em] text-bloom-sage">
@@ -71,8 +96,7 @@ export function FloralProfileCard({
 
         <div className="mt-10 grid gap-12 lg:grid-cols-[1.7fr,1fr]">
           <motion.div
-            {...fadeUp}
-            transition={{ ...sectionTransition, delay: 0.15 }}
+            {...fadeUpMotion(reducedMotion, 0.15)}
             className="space-y-5"
           >
             <p className="font-serif text-xl leading-relaxed text-bloom-primary sm:text-2xl">
@@ -84,8 +108,7 @@ export function FloralProfileCard({
           </motion.div>
 
           <motion.aside
-            {...fadeUp}
-            transition={{ ...sectionTransition, delay: 0.25 }}
+            {...fadeUpMotion(reducedMotion, 0.25)}
             className="space-y-8 lg:border-l lg:border-bloom-cream lg:pl-10"
           >
             <SidebarSection label="Palette">
@@ -140,8 +163,7 @@ export function FloralProfileCard({
         </div>
 
         <motion.section
-          {...fadeUp}
-          transition={{ ...sectionTransition, delay: 0.35 }}
+          {...fadeUpMotion(reducedMotion, 0.35)}
           className="mt-14 border-t border-bloom-cream pt-10"
         >
           <p className="text-xs font-medium uppercase tracking-[0.32em] text-bloom-sage">
@@ -162,8 +184,7 @@ export function FloralProfileCard({
         </motion.section>
 
         <motion.section
-          {...fadeUp}
-          transition={{ ...sectionTransition, delay: 0.45 }}
+          {...fadeUpMotion(reducedMotion, 0.45)}
           className="mt-14 border-t border-bloom-cream pt-10"
         >
           <p className="text-xs font-medium uppercase tracking-[0.32em] text-bloom-sage">
@@ -178,6 +199,7 @@ export function FloralProfileCard({
               status={sceneImageStatus}
               url={sceneImageUrl}
               label={sceneLabel}
+              reducedMotion={reducedMotion}
             />
           </div>
         </motion.section>
@@ -211,18 +233,26 @@ interface HeroImageProps {
   status: FloralProfileCardProps["heroImageStatus"];
   url: string | null;
   signatureFlower: string;
+  reducedMotion: boolean;
 }
 
-function HeroImage({ status, url, signatureFlower }: HeroImageProps) {
+function HeroImage({
+  status,
+  url,
+  signatureFlower,
+  reducedMotion,
+}: HeroImageProps) {
   if (status === "success" && url) {
     return (
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-bloom-cream">
         <motion.img
           src={url}
           alt={`Editorial photograph of a ${signatureFlower} arrangement`}
-          initial={{ opacity: 0, scale: 1.04 }}
+          initial={reducedMotion ? false : { opacity: 0, scale: 1.04 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
+          transition={
+            reducedMotion ? { duration: 0 } : { duration: 0.8, ease: "easeOut" }
+          }
           className="h-full w-full object-cover"
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bloom-primary/15 via-transparent to-transparent" />
@@ -244,8 +274,14 @@ function HeroImage({ status, url, signatureFlower }: HeroImageProps) {
     <div className="relative aspect-[16/9] w-full overflow-hidden bg-gradient-to-br from-bloom-cream via-bloom-cream to-bloom-gold/15">
       <motion.div
         aria-hidden
-        animate={{ opacity: [0.4, 0.9, 0.4] }}
-        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+        animate={
+          reducedMotion ? { opacity: 0.55 } : { opacity: [0.4, 0.9, 0.4] }
+        }
+        transition={
+          reducedMotion
+            ? { duration: 0 }
+            : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
+        }
         className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent"
       />
       <div className="absolute inset-0 flex items-center justify-center">
@@ -261,18 +297,21 @@ interface SceneImageProps {
   status: ImageStatus;
   url: string | null;
   label: string;
+  reducedMotion: boolean;
 }
 
-function SceneImage({ status, url, label }: SceneImageProps) {
+function SceneImage({ status, url, label, reducedMotion }: SceneImageProps) {
   if (status === "success" && url) {
     return (
       <div className="relative aspect-[3/2] w-full overflow-hidden rounded-2xl bg-bloom-cream">
         <motion.img
           src={url}
           alt={label}
-          initial={{ opacity: 0, scale: 1.04 }}
+          initial={reducedMotion ? false : { opacity: 0, scale: 1.04 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.9, ease: "easeOut" }}
+          transition={
+            reducedMotion ? { duration: 0 } : { duration: 0.9, ease: "easeOut" }
+          }
           className="h-full w-full object-cover"
         />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-bloom-primary/20 to-transparent" />
@@ -294,8 +333,14 @@ function SceneImage({ status, url, label }: SceneImageProps) {
     <div className="relative aspect-[3/2] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-bloom-cream via-bloom-cream to-bloom-gold/15">
       <motion.div
         aria-hidden
-        animate={{ opacity: [0.4, 0.9, 0.4] }}
-        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+        animate={
+          reducedMotion ? { opacity: 0.55 } : { opacity: [0.4, 0.9, 0.4] }
+        }
+        transition={
+          reducedMotion
+            ? { duration: 0 }
+            : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
+        }
         className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent"
       />
       <div className="absolute inset-0 flex items-center justify-center">

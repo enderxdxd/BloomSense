@@ -6,8 +6,10 @@ import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useReducedMotion } from "@/lib/useReducedMotion";
 
 export default function RegisterPage() {
+  const reducedMotion = useReducedMotion();
   const router = useRouter();
 
   const [name, setName] = useState("");
@@ -61,9 +63,9 @@ export default function RegisterPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-bloom-cream px-4">
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={reducedMotion ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
+        transition={reducedMotion ? { duration: 0 } : { duration: 0.35 }}
         className="w-full max-w-md rounded-2xl border border-bloom-gold/30 bg-white/70 p-8 shadow-sm backdrop-blur"
       >
         <div className="mb-8 text-center">

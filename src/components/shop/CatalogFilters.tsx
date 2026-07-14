@@ -26,6 +26,7 @@ export function CatalogFilters({ query }: CatalogFiltersProps) {
       <nav aria-label="Filter by category" className="flex flex-wrap gap-2">
         <Link
           href={buildHref(query, { category: undefined })}
+          aria-current={query.category === undefined ? "page" : undefined}
           className={chipClass(query.category === undefined)}
         >
           All
@@ -34,6 +35,7 @@ export function CatalogFilters({ query }: CatalogFiltersProps) {
           <Link
             key={value}
             href={buildHref(query, { category: value })}
+            aria-current={query.category === value ? "page" : undefined}
             className={chipClass(query.category === value)}
           >
             {label}

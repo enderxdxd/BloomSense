@@ -10,9 +10,9 @@ const config: Config = {
       colors: {
         bloom: {
           primary: "#6D2E46", // deep berry — headers, buttons, accents
-          rose: "#A26769",    // dusty rose — secondary text, borders
-          sage: "#7A9E7E",    // sage green — success, leaf elements
-          gold: "#C8A882",    // warm gold — highlights, badges
+          rose: "#8F4F54",    // dusty rose - accessible secondary text
+          sage: "#496F50",    // sage green - accessible leaf/status text
+          gold: "#7F6334",    // warm gold - accessible highlight text
           cream: "#F9F5F0",   // off-white — backgrounds
         },
       },

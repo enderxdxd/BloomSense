@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { useReducedMotion } from "@/lib/useReducedMotion";
 
 type Status = "idle" | "loading" | "success" | "error";
 
@@ -10,6 +11,7 @@ type Status = "idle" | "loading" | "success" | "error";
  * board for the visitor's persisted floral profile.
  */
 export function MoodBoard() {
+  const reducedMotion = useReducedMotion();
   const [status, setStatus] = useState<Status>("idle");
   const [url, setUrl] = useState<string | null>(null);
   const [cached, setCached] = useState(false);
@@ -75,8 +77,14 @@ export function MoodBoard() {
           <div className="relative mx-auto aspect-square w-full max-w-xl overflow-hidden rounded-2xl bg-gradient-to-br from-bloom-cream via-bloom-cream to-bloom-gold/15">
             <motion.div
               aria-hidden
-              animate={{ opacity: [0.4, 0.9, 0.4] }}
-              transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+              animate={
+                reducedMotion ? { opacity: 0.55 } : { opacity: [0.4, 0.9, 0.4] }
+              }
+              transition={
+                reducedMotion
+                  ? { duration: 0 }
+                  : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
+              }
               className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent"
             />
             <div className="absolute inset-0 flex items-center justify-center">
@@ -107,9 +115,17 @@ export function MoodBoard() {
             <motion.img
               src={url}
               alt="AI-generated floral mood board for your profile"
-              initial={{ opacity: 0, scale: 1.03, rotate: -0.5 }}
+              initial={
+                reducedMotion
+                  ? false
+                  : { opacity: 0, scale: 1.03, rotate: -0.5 }
+              }
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              transition={{ duration: 0.7, ease: "easeOut" }}
+              transition={
+                reducedMotion
+                  ? { duration: 0 }
+                  : { duration: 0.7, ease: "easeOut" }
+              }
               className="w-full rounded-2xl shadow-[0_24px_60px_-24px_rgba(109,46,70,0.4)]"
             />
             <figcaption className="mt-2 text-center text-xs italic text-bloom-rose">
