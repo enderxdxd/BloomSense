@@ -194,9 +194,14 @@ async function generate(
 ): Promise<GenerateResult> {
   const openai = getOpenAIClient();
 
+  // Products are presented under short keys (p1, p2, …) — models mangle
+  // long opaque cuids, but copy short keys reliably. Keys are mapped back
+  // to real ids after validation.
+  const keyToId = new Map(catalog.map((p, i) => [`p${i + 1}`, p.id]));
+
   const catalogPrompt = `CATALOG (the ONLY products you may recommend):\n${JSON.stringify(
-    catalog.map((p) => ({
-      productId: p.id,
+    catalog.map((p, i) => ({
+      productId: `p${i + 1}`,
       name: p.name,
       category: p.category,
       priceUSD: p.price,
@@ -248,10 +253,10 @@ async function generate(
     return { kind: "schema-mismatch", issues: validation.error.flatten() };
   }
 
-  // RAG guardrail: every recommended ID must exist in the injected snapshot.
-  const validIds = new Set(catalog.map((p) => p.id));
+  // RAG guardrail: every recommended key must exist in the injected
+  // snapshot; valid keys are translated back to real product ids.
   const invented = validation.data.recommendations.filter(
-    (r) => !validIds.has(r.productId),
+    (r) => !keyToId.has(r.productId),
   );
   if (invented.length > 0) {
     return {
@@ -259,12 +264,21 @@ async function generate(
       issues: {
         recommendations: `Unknown productId(s): ${invented
           .map((r) => r.productId)
-          .join(", ")}`,
+          .join(", ")}. Use only the productId values from the CATALOG.`,
       },
     };
   }
 
-  return { kind: "ok", response: validation.data };
+  return {
+    kind: "ok",
+    response: {
+      ...validation.data,
+      recommendations: validation.data.recommendations.map((r) => ({
+        ...r,
+        productId: keyToId.get(r.productId)!,
+      })),
+    },
+  };
 }
 
 function jsonError(message: string, status: number) {

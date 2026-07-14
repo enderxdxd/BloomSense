@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ErrorState } from "@/components/ErrorState";
 import { FloralProfileCard } from "@/components/FloralProfileCard";
 import { FloralProfileSkeleton } from "@/components/FloralProfileSkeleton";
+import { MoodBoard } from "@/components/MoodBoard";
 import { QuizForm } from "@/components/QuizForm";
 import { ProductCard } from "@/components/shop/ProductCard";
 import type {
@@ -172,6 +173,8 @@ export default function HomePage() {
                 </ul>
               </section>
             )}
+
+            <MoodBoard />
           </>
         )}
       </div>
