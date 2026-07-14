@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
+import { useReducedMotion } from "@/lib/useReducedMotion";
 import {
   cartSubtotal,
   useCartHydrated,
@@ -12,6 +13,7 @@ import {
 import { ProductImage } from "./ProductImage";
 
 export function CartDrawer() {
+  const reducedMotion = useReducedMotion();
   const hydrated = useCartHydrated();
   const items = useCartStore((s) => s.items);
   const isOpen = useCartStore((s) => s.isOpen);
@@ -38,9 +40,10 @@ export function CartDrawer() {
         <>
           <motion.button
             aria-label="Close cart"
-            initial={{ opacity: 0 }}
+            initial={reducedMotion ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            exit={reducedMotion ? undefined : { opacity: 0 }}
+            transition={{ duration: reducedMotion ? 0 : 0.2 }}
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-40 bg-bloom-primary/30 backdrop-blur-[2px]"
           />
@@ -48,10 +51,14 @@ export function CartDrawer() {
             role="dialog"
             aria-modal="true"
             aria-label="Shopping cart"
-            initial={{ x: "100%" }}
+            initial={reducedMotion ? false : { x: "100%" }}
             animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
+            exit={reducedMotion ? undefined : { x: "100%" }}
+            transition={{
+              type: "tween",
+              duration: reducedMotion ? 0 : 0.25,
+              ease: "easeOut",
+            }}
             className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col bg-white shadow-2xl"
           >
             <header className="flex items-center justify-between border-b border-bloom-cream px-6 py-5">

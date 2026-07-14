@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Cake, Calendar, Heart, Sparkles, type LucideIcon } from "lucide-react";
 import { useState } from "react";
+import { useReducedMotion } from "@/lib/useReducedMotion";
 import type {
   FloralProfile,
   QuizInput,
@@ -104,6 +105,7 @@ export function QuizForm({
   onError,
   onLoadingChange,
 }: QuizFormProps) {
+  const reducedMotion = useReducedMotion();
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<DraftAnswers>(EMPTY_DRAFT);
   const [submitting, setSubmitting] = useState(false);
@@ -210,10 +212,14 @@ export function QuizForm({
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={step}
-            initial={{ opacity: 0, x: 24 }}
+            initial={reducedMotion ? false : { opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -24 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
+            exit={reducedMotion ? undefined : { opacity: 0, x: -24 }}
+            transition={
+              reducedMotion
+                ? { duration: 0 }
+                : { duration: 0.25, ease: "easeOut" }
+            }
           >
             {step === 0 && (
               <OccasionStep
@@ -359,6 +365,7 @@ function OccasionStep({ value, onSelect }: OccasionStepProps) {
           <button
             key={option.value}
             type="button"
+            aria-pressed={isSelected}
             onClick={() => onSelect(option.value)}
             className={`group flex items-start gap-3 rounded-2xl border p-4 text-left transition ${
               isSelected
@@ -413,6 +420,7 @@ function ChipMultiSelect({
             <button
               key={option}
               type="button"
+              aria-pressed={isSelected}
               onClick={() => onToggle(option)}
               className={`rounded-full border px-4 py-2 text-sm font-medium capitalize transition ${
                 isSelected

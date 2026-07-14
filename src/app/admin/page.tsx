@@ -161,7 +161,7 @@ function RevenueChart({ data }: { data: Array<{ date: string; total: number }> }
               width={barW}
               height={barH}
               rx={3}
-              fill="#7A9E7E"
+              fill="#496F50"
               opacity={d.total > 0 ? 0.9 : 0.25}
             />
             {d.total === 0 && (
@@ -170,7 +170,7 @@ function RevenueChart({ data }: { data: Array<{ date: string; total: number }> }
                 y={padding.top + innerH - 2}
                 width={barW}
                 height={2}
-                fill="#C8A882"
+                fill="#7F6334"
                 opacity={0.5}
               />
             )}
@@ -179,7 +179,7 @@ function RevenueChart({ data }: { data: Array<{ date: string; total: number }> }
               y={height - 8}
               textAnchor="middle"
               fontSize={9}
-              fill="#A26769"
+              fill="#8F4F54"
             >
               {day}
             </text>
