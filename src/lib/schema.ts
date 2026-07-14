@@ -98,6 +98,54 @@ export const SceneImageRequestSchema = z.object({
   vibe: z.array(z.string().trim().min(1)).min(0).max(5).optional(),
 });
 
+export const PRODUCT_CATEGORIES = [
+  "BOUQUET",
+  "ARRANGEMENT",
+  "SINGLE_STEM",
+  "WEDDING_PACKAGE",
+] as const;
+
+const ProductFields = z.object({
+  name: z.string().trim().min(2).max(120),
+  slug: z
+    .string()
+    .trim()
+    .min(2)
+    .max(140)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "kebab-case letters/digits only"),
+  description: z.string().trim().min(10).max(2000),
+  price: z.number().positive().max(100_000),
+  stock: z.number().int().min(0).max(100_000),
+  category: z.enum(PRODUCT_CATEGORIES),
+  imageUrl: z.string().trim().min(1).max(500),
+  active: z.boolean(),
+});
+
+export const ProductCreateSchema = ProductFields.extend({
+  active: z.boolean().optional().default(true),
+});
+
+// Built from the default-free field set: a defaulted `active` in .partial()
+// would silently inject active:true into every stock/price PATCH and
+// reactivate soft-deleted products.
+export const ProductUpdateSchema = ProductFields.partial().refine(
+  (patch) => Object.keys(patch).length > 0,
+  { message: "At least one field must be provided" },
+);
+
+export const ORDER_STATUSES = [
+  "PENDING",
+  "CONFIRMED",
+  "PREPARING",
+  "SHIPPED",
+  "DELIVERED",
+  "CANCELLED",
+] as const;
+
+export const OrderStatusUpdateSchema = z.object({
+  status: z.enum(ORDER_STATUSES),
+});
+
 export const OrderCreateSchema = z.object({
   items: z
     .array(
