@@ -3,13 +3,18 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Cake, Calendar, Heart, Sparkles, type LucideIcon } from "lucide-react";
 import { useState } from "react";
-import type { FloralProfile, QuizInput } from "@/lib/schema";
+import type {
+  FloralProfile,
+  QuizInput,
+  RecommendedProduct,
+} from "@/lib/schema";
 import { QuizInputSchema } from "@/lib/schema";
 
 interface QuizFormProps {
   onProfileGenerated: (
     profile: FloralProfile,
     occasion: QuizInput["occasion"],
+    recommendations: RecommendedProduct[],
   ) => void;
   onError: (message: string) => void;
   onLoadingChange: (loading: boolean) => void;
@@ -157,8 +162,15 @@ export function QuizForm({
         throw new Error(body?.error ?? `Request failed with ${res.status}`);
       }
 
-      const { profile } = (await res.json()) as { profile: FloralProfile };
-      onProfileGenerated(profile, parseResult.data.occasion);
+      const { profile, recommendations } = (await res.json()) as {
+        profile: FloralProfile;
+        recommendations: RecommendedProduct[];
+      };
+      onProfileGenerated(
+        profile,
+        parseResult.data.occasion,
+        recommendations ?? [],
+      );
     } catch (err) {
       onError(err instanceof Error ? err.message : "Unknown error");
     } finally {

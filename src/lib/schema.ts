@@ -26,23 +26,61 @@ export const QuizInputSchema = z.object({
   notes: z.string().trim().max(500).optional(),
 });
 
-export const FloralProfileSchema = z
-  .object({
-    profileName: z.string().trim().min(1).max(60),
-    tagline: z.string().trim().min(8).max(120),
-    description: z.string().trim().min(20).max(500),
-    narrative: z.string().trim().min(120).max(900),
-    dominantFlowers: z.array(z.string().trim().min(1)).min(3).max(5),
-    signatureFlower: z.string().trim().min(1).max(60),
-    colorPalette: z.array(z.string().trim().min(1)).min(3).max(5),
-    moodKeywords: z.array(z.string().trim().min(1)).min(3).max(5),
-    recommendedArrangementStyle: z.enum(ARRANGEMENT_STYLES),
-    stylingNotes: z.array(z.string().trim().min(10).max(220)).length(3),
-  })
-  .refine((p) => p.dominantFlowers.includes(p.signatureFlower), {
+const FloralProfileBase = z.object({
+  profileName: z.string().trim().min(1).max(60),
+  tagline: z.string().trim().min(8).max(120),
+  description: z.string().trim().min(20).max(500),
+  narrative: z.string().trim().min(120).max(900),
+  dominantFlowers: z.array(z.string().trim().min(1)).min(3).max(5),
+  signatureFlower: z.string().trim().min(1).max(60),
+  colorPalette: z.array(z.string().trim().min(1)).min(3).max(5),
+  moodKeywords: z.array(z.string().trim().min(1)).min(3).max(5),
+  recommendedArrangementStyle: z.enum(ARRANGEMENT_STYLES),
+  stylingNotes: z.array(z.string().trim().min(10).max(220)).length(3),
+});
+
+const signatureInDominant = {
+  check: (p: { dominantFlowers: string[]; signatureFlower: string }) =>
+    p.dominantFlowers.includes(p.signatureFlower),
+  params: {
     message: "signatureFlower must be one of dominantFlowers",
     path: ["signatureFlower"],
-  });
+  },
+};
+
+export const FloralProfileSchema = FloralProfileBase.refine(
+  signatureInDominant.check,
+  signatureInDominant.params,
+);
+
+/**
+ * Shape GPT must return when the catalog is injected into the prompt
+ * (Phase 10C): the editorial profile plus product recommendations whose
+ * IDs are validated against the injected catalog server-side.
+ */
+export const AIQuizResponseSchema = FloralProfileBase.extend({
+  recommendations: z
+    .array(
+      z.object({
+        productId: z.string().trim().min(1).max(60),
+        reason: z.string().trim().min(8).max(220),
+      }),
+    )
+    .min(3)
+    .max(5),
+}).refine(signatureInDominant.check, signatureInDominant.params);
+
+/** Client-safe recommended product payload returned by /api/quiz/submit. */
+export interface RecommendedProduct {
+  id: string;
+  slug: string;
+  name: string;
+  price: number;
+  imageUrl: string;
+  category: string;
+  stock: number;
+  reason: string;
+}
 
 export const HeroImageRequestSchema = z.object({
   signatureFlower: z.string().trim().min(1).max(60),
@@ -62,5 +100,6 @@ export const SceneImageRequestSchema = z.object({
 
 export type QuizInput = z.infer<typeof QuizInputSchema>;
 export type FloralProfile = z.infer<typeof FloralProfileSchema>;
+export type AIQuizResponse = z.infer<typeof AIQuizResponseSchema>;
 export type HeroImageRequest = z.infer<typeof HeroImageRequestSchema>;
 export type SceneImageRequest = z.infer<typeof SceneImageRequestSchema>;

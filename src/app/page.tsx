@@ -5,13 +5,21 @@ import { ErrorState } from "@/components/ErrorState";
 import { FloralProfileCard } from "@/components/FloralProfileCard";
 import { FloralProfileSkeleton } from "@/components/FloralProfileSkeleton";
 import { QuizForm } from "@/components/QuizForm";
-import type { FloralProfile, QuizInput } from "@/lib/schema";
+import { ProductCard } from "@/components/shop/ProductCard";
+import type {
+  FloralProfile,
+  QuizInput,
+  RecommendedProduct,
+} from "@/lib/schema";
 
 type ImageStatus = "idle" | "loading" | "success" | "error";
 
 export default function HomePage() {
   const [profile, setProfile] = useState<FloralProfile | null>(null);
   const [occasion, setOccasion] = useState<QuizInput["occasion"] | null>(null);
+  const [recommendations, setRecommendations] = useState<RecommendedProduct[]>(
+    [],
+  );
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
@@ -110,9 +118,10 @@ export default function HomePage() {
 
         <div className="mx-auto max-w-2xl">
           <QuizForm
-            onProfileGenerated={(p, submittedOccasion) => {
+            onProfileGenerated={(p, submittedOccasion, recs) => {
               setProfile(p);
               setOccasion(submittedOccasion);
+              setRecommendations(recs);
               setError("");
             }}
             onError={setError}
@@ -129,14 +138,41 @@ export default function HomePage() {
         )}
 
         {!loading && profile !== null && error === "" && (
-          <FloralProfileCard
-            profile={profile}
-            heroImageUrl={heroUrl}
-            heroImageStatus={heroStatus}
-            sceneImageUrl={sceneUrl}
-            sceneImageStatus={sceneStatus}
-            occasion={occasion}
-          />
+          <>
+            <FloralProfileCard
+              profile={profile}
+              heroImageUrl={heroUrl}
+              heroImageStatus={heroStatus}
+              sceneImageUrl={sceneUrl}
+              sceneImageStatus={sceneStatus}
+              occasion={occasion}
+            />
+
+            {recommendations.length > 0 && (
+              <section aria-labelledby="matched-heading" className="mt-14">
+                <p className="text-xs font-medium uppercase tracking-[0.32em] text-bloom-sage">
+                  Matched for you
+                </p>
+                <h2
+                  id="matched-heading"
+                  className="mt-2 font-serif text-3xl font-semibold text-bloom-primary"
+                >
+                  Arrangements that fit your profile
+                </h2>
+                <p className="mt-2 max-w-xl text-sm text-bloom-rose">
+                  Picked from our live catalog — each with why it suits{" "}
+                  <span className="italic">{profile.profileName}</span>.
+                </p>
+                <ul className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {recommendations.map((rec) => (
+                    <li key={rec.id}>
+                      <ProductCard product={rec} matchReason={rec.reason} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </>
         )}
       </div>
     </main>

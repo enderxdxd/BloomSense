@@ -15,6 +15,48 @@ jest.mock("@/lib/prisma", () => ({
   },
 }));
 
+const FAKE_CATALOG = [
+  {
+    id: "prod_rose",
+    name: "Blush Garden Romance",
+    category: "BOUQUET",
+    price: 89,
+    description: "A romantic hand-tied bouquet of garden roses.",
+  },
+  {
+    id: "prod_peony",
+    name: "Peony Cloud",
+    category: "ARRANGEMENT",
+    price: 120,
+    description: "Billowing peonies in a low ceramic compote.",
+  },
+  {
+    id: "prod_stem",
+    name: "Single King Protea",
+    category: "SINGLE_STEM",
+    price: 18,
+    description: "A sculptural statement stem.",
+  },
+];
+
+const FULL_PRODUCTS = FAKE_CATALOG.map((p) => ({
+  id: p.id,
+  name: p.name,
+  slug: p.id.replace("prod_", "slug-"),
+  description: p.description,
+  price: p.price,
+  stock: 10,
+  category: p.category,
+  imageUrl: `/images/products/${p.id}.jpg`,
+}));
+
+jest.mock("@/lib/products", () => ({
+  listInStockForPrompt: jest.fn(async () => FAKE_CATALOG),
+  getProductsByIds: jest.fn(async (ids: string[]) =>
+    FULL_PRODUCTS.filter((p) => ids.includes(p.id)),
+  ),
+}));
+
 import { POST } from "@/app/api/quiz/submit/route";
 
 const VALID_INPUT = {
@@ -25,7 +67,13 @@ const VALID_INPUT = {
   preferredColors: ["blush", "ivory"],
 };
 
-const VALID_PROFILE = {
+const VALID_RECOMMENDATIONS = [
+  { productId: "prod_rose", reason: "Garden roses echo your signature bloom." },
+  { productId: "prod_peony", reason: "Peonies carry the same soft romance." },
+  { productId: "prod_stem", reason: "A sculptural counterpoint for the table." },
+];
+
+const VALID_AI_RESPONSE = {
   profileName: "Modern Romance",
   tagline: "A tender contemporary love letter in petals",
   description:
@@ -42,6 +90,7 @@ const VALID_PROFILE = {
     "Use a matte ceramic compote rather than glass — it absorbs morning light and flatters the blush tones.",
     "Refresh the water on day three and recut the stems on a steep angle for another four days of bloom.",
   ],
+  recommendations: VALID_RECOMMENDATIONS,
 };
 
 function mockCompletion(content: unknown) {
@@ -75,15 +124,36 @@ beforeEach(() => {
 });
 
 describe("POST /api/quiz/submit", () => {
-  it("returns 200 with the profile when input and AI response are valid", async () => {
-    createMock.mockResolvedValueOnce(mockCompletion(VALID_PROFILE));
+  it("returns 200 with profile and full recommended products", async () => {
+    createMock.mockResolvedValueOnce(mockCompletion(VALID_AI_RESPONSE));
 
     const res = await POST(makeRequest(VALID_INPUT));
     expect(res.status).toBe(200);
 
-    const json = (await res.json()) as { profile: typeof VALID_PROFILE };
-    expect(json.profile).toEqual(VALID_PROFILE);
+    const json = (await res.json()) as {
+      profile: Record<string, unknown>;
+      recommendations: Array<Record<string, unknown>>;
+    };
+
+    expect(json.profile.profileName).toBe("Modern Romance");
+    expect(json.profile).not.toHaveProperty("recommendations");
+    expect(json.recommendations).toHaveLength(3);
+    expect(json.recommendations[0]).toMatchObject({
+      id: "prod_rose",
+      name: "Blush Garden Romance",
+      price: 89,
+      reason: "Garden roses echo your signature bloom.",
+    });
     expect(createMock).toHaveBeenCalledTimes(1);
+
+    // The catalog snapshot must be visible to the model.
+    const call = createMock.mock.calls[0][0];
+    const catalogMessage = call.messages.find(
+      (m: { content: string }) =>
+        typeof m.content === "string" && m.content.startsWith("CATALOG"),
+    );
+    expect(catalogMessage).toBeDefined();
+    expect(catalogMessage.content).toContain("prod_rose");
   });
 
   it("returns 400 when the input fails schema validation", async () => {
@@ -113,7 +183,7 @@ describe("POST /api/quiz/submit", () => {
 
   it("rejects a profile whose signatureFlower is not in dominantFlowers", async () => {
     const inconsistent = {
-      ...VALID_PROFILE,
+      ...VALID_AI_RESPONSE,
       signatureFlower: "lily-of-the-valley",
     };
     createMock
@@ -122,6 +192,43 @@ describe("POST /api/quiz/submit", () => {
 
     const res = await POST(makeRequest(VALID_INPUT));
     expect(res.status).toBe(502);
+    expect(createMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects recommendations whose productId is not in the injected catalog", async () => {
+    const invented = {
+      ...VALID_AI_RESPONSE,
+      recommendations: [
+        ...VALID_RECOMMENDATIONS.slice(0, 2),
+        { productId: "prod_hallucinated", reason: "This one does not exist." },
+      ],
+    };
+    createMock
+      .mockResolvedValueOnce(mockCompletion(invented))
+      .mockResolvedValueOnce(mockCompletion(invented));
+
+    const res = await POST(makeRequest(VALID_INPUT));
+    expect(res.status).toBe(502);
+
+    const json = (await res.json()) as { issues: { recommendations: string } };
+    expect(JSON.stringify(json.issues)).toContain("prod_hallucinated");
+    expect(createMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("recovers when the retry returns valid recommendations", async () => {
+    const invented = {
+      ...VALID_AI_RESPONSE,
+      recommendations: [
+        { productId: "prod_fake", reason: "Hallucinated product reference." },
+        ...VALID_RECOMMENDATIONS.slice(0, 2),
+      ],
+    };
+    createMock
+      .mockResolvedValueOnce(mockCompletion(invented))
+      .mockResolvedValueOnce(mockCompletion(VALID_AI_RESPONSE));
+
+    const res = await POST(makeRequest(VALID_INPUT));
+    expect(res.status).toBe(200);
     expect(createMock).toHaveBeenCalledTimes(2);
   });
 
