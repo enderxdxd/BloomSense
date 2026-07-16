@@ -2,6 +2,7 @@
 
 import { ShoppingBag } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   cartItemCount,
   useCartHydrated,
@@ -15,10 +16,15 @@ const NAV_LINKS = [
 ] as const;
 
 export function SiteHeader() {
+  const pathname = usePathname();
   const hydrated = useCartHydrated();
   const items = useCartStore((s) => s.items);
   const setOpen = useCartStore((s) => s.setOpen);
   const count = hydrated ? cartItemCount(items) : 0;
+
+  // The landing ships its own fixed nav (design handoff v2); the app
+  // header would double up over the 3D hero.
+  if (pathname === "/") return null;
 
   return (
     <header className="sticky top-0 z-30 border-b border-bloom-gold/20 bg-bloom-cream/90 backdrop-blur">
