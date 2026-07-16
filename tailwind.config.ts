@@ -19,6 +19,7 @@ const config: Config = {
       fontFamily: {
         serif: ["var(--font-serif)", "Georgia", "ui-serif", "serif"],
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        karla: ["var(--font-karla)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
     },
   },
