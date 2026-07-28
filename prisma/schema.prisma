@@ -23,6 +23,7 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+  REFUNDED
 }
 
 enum Category {
@@ -40,21 +41,27 @@ model User {
   role         Role           @default(CUSTOMER)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
-  profile      FloralProfile?
+  profiles     FloralProfile[]
   orders       Order[]
 }
 
 model FloralProfile {
   id           String   @id @default(cuid())
-  userId       String   @unique
+  userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String   @default("My floral profile")
   occasion     String
   flowerTypes  String[]
   palette      String[]
   mood         String
   arrangement  String
   moodBoardUrl String?
+  /// Full editorial profile + recommendations payload as returned by the
+  /// quiz, so saved profiles re-render exactly as first seen.
+  data         Json?
   createdAt    DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Product {
@@ -79,6 +86,8 @@ model Order {
   status          OrderStatus @default(PENDING)
   total           Decimal     @db.Decimal(10, 2)
   stripePaymentId String?
+  stripeRefundId  String?
+  cancelledAt     DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   items           OrderItem[]
