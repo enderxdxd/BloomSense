@@ -20,11 +20,16 @@ export default async function AdminDashboardPage() {
   const chartStart = new Date(now.getTime() - DAYS_IN_CHART * 24 * 60 * 60 * 1000);
   chartStart.setHours(0, 0, 0, 0);
 
-  const [paidOrders, ordersThisWeek, pendingCount, lowStock] =
+  const [paidOrders, refundedOrders, ordersThisWeek, pendingCount, lowStock] =
     await Promise.all([
       prisma.order.findMany({
         where: { status: { in: PAID_STATUSES } },
         select: { total: true, createdAt: true },
+      }),
+      // Refunds are money going back out — they must never look like revenue.
+      prisma.order.findMany({
+        where: { status: "REFUNDED" },
+        select: { total: true },
       }),
       prisma.order.count({ where: { createdAt: { gte: weekAgo } } }),
       prisma.order.count({ where: { status: "PENDING" } }),
@@ -36,6 +41,7 @@ export default async function AdminDashboardPage() {
     ]);
 
   const revenue = paidOrders.reduce((sum, o) => sum + Number(o.total), 0);
+  const refunded = refundedOrders.reduce((sum, o) => sum + Number(o.total), 0);
 
   // Revenue by day for the last 14 days.
   const byDay = new Map<string, number>();
@@ -62,8 +68,13 @@ export default async function AdminDashboardPage() {
         </h1>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Revenue (paid orders)" value={`$${revenue.toFixed(2)}`} />
+        <StatCard
+          label="Refunded"
+          value={`-$${refunded.toFixed(2)}`}
+          tone={refunded > 0 ? "warning" : "default"}
+        />
         <StatCard label="Orders this week" value={String(ordersThisWeek)} />
         <StatCard label="Awaiting payment" value={String(pendingCount)} />
       </div>
@@ -116,13 +127,25 @@ export default async function AdminDashboardPage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  tone?: "default" | "warning";
+}) {
   return (
     <div className="rounded-2xl border border-bloom-gold/30 bg-white p-5 shadow-sm">
       <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-bloom-sage">
         {label}
       </p>
-      <p className="mt-2 font-serif text-3xl font-semibold text-bloom-primary">
+      <p
+        className={`mt-2 font-serif text-3xl font-semibold ${
+          tone === "warning" ? "text-purple-700" : "text-bloom-primary"
+        }`}
+      >
         {value}
       </p>
     </div>
