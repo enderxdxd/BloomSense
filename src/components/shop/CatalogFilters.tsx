@@ -12,6 +12,7 @@ function buildHref(query: CatalogQuery, patch: Partial<CatalogQuery>): string {
   if (merged.minPrice !== undefined) params.set("min", String(merged.minPrice));
   if (merged.maxPrice !== undefined) params.set("max", String(merged.maxPrice));
   if (merged.sort && merged.sort !== "newest") params.set("sort", merged.sort);
+  if (merged.search) params.set("q", merged.search);
   const qs = params.toString();
   return qs ? `/catalog?${qs}` : "/catalog";
 }
@@ -51,6 +52,18 @@ export function CatalogFilters({ query }: CatalogFiltersProps) {
         {query.category && (
           <input type="hidden" name="category" value={query.category} />
         )}
+        <label className="block">
+          <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-bloom-sage">
+            Search
+          </span>
+          <input
+            type="search"
+            name="q"
+            defaultValue={query.search ?? ""}
+            placeholder="peony, wedding, blush…"
+            className="mt-1 block w-56 rounded-lg border border-bloom-gold/40 bg-white px-3 py-2 text-sm text-bloom-primary outline-none focus:border-bloom-primary"
+          />
+        </label>
         <label className="block">
           <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-bloom-sage">
             Min price
