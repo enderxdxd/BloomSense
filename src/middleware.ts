@@ -11,7 +11,9 @@ function isSessionPath(pathname: string): boolean {
   return (
     pathname.startsWith("/checkout") ||
     pathname.startsWith("/orders") ||
-    pathname.startsWith("/api/orders")
+    pathname.startsWith("/api/orders") ||
+    pathname.startsWith("/account") ||
+    pathname.startsWith("/api/account")
   );
 }
 
@@ -68,5 +70,8 @@ export const config = {
     "/orders",
     "/api/orders/:path*",
     "/api/orders",
+    "/account/:path*",
+    "/account",
+    "/api/account/:path*",
   ],
 };
