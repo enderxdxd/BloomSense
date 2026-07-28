@@ -84,10 +84,24 @@ model Order {
   userId          String
   user            User        @relation(fields: [userId], references: [id])
   status          OrderStatus @default(PENDING)
+  subtotal        Decimal     @default(0) @db.Decimal(10, 2)
+  deliveryFee     Decimal     @default(0) @db.Decimal(10, 2)
   total           Decimal     @db.Decimal(10, 2)
   stripePaymentId String?
   stripeRefundId  String?
   cancelledAt     DateTime?
+
+  // Delivery details — a florist ships to a recipient who is usually not
+  // the buyer, on a chosen date, often with a card message.
+  recipientName   String?
+  recipientPhone  String?
+  addressLine1    String?
+  addressLine2    String?
+  city            String?
+  postalCode      String?
+  deliveryDate    DateTime?
+  giftMessage     String?
+
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   items           OrderItem[]

@@ -11,6 +11,10 @@ export interface PipelineOrder {
   createdAt: string;
   customer: string;
   items: string[];
+  recipientName: string | null;
+  address: string;
+  deliveryDate: string | null;
+  giftMessage: string | null;
 }
 
 const COLUMNS = [
@@ -108,6 +112,37 @@ export function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                         <p className="mt-1 line-clamp-2 text-xs text-bloom-primary/75">
                           {order.items.join(", ")}
                         </p>
+                        {order.recipientName && (
+                          <div className="mt-2 rounded-lg bg-bloom-cream/70 px-2 py-1.5">
+                            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-bloom-sage">
+                              Deliver to
+                            </p>
+                            <p className="text-xs text-bloom-primary">
+                              {order.recipientName}
+                            </p>
+                            <p className="text-[11px] leading-snug text-bloom-primary/75">
+                              {order.address}
+                            </p>
+                            {order.deliveryDate && (
+                              <p className="mt-0.5 text-[11px] font-medium text-bloom-primary">
+                                {new Date(order.deliveryDate).toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    weekday: "short",
+                                    month: "short",
+                                    day: "numeric",
+                                    timeZone: "UTC",
+                                  },
+                                )}
+                              </p>
+                            )}
+                            {order.giftMessage && (
+                              <p className="mt-1 line-clamp-2 font-serif text-[11px] italic text-bloom-rose">
+                                “{order.giftMessage}”
+                              </p>
+                            )}
+                          </div>
+                        )}
                         <div className="mt-2 flex items-center justify-between gap-2">
                           <span className="text-sm font-semibold text-bloom-primary">
                             ${order.total.toFixed(2)}

@@ -39,11 +39,34 @@ const DB_PRODUCTS = [
   { id: "prod_b", name: "Peony Cloud", price: "120.50", stock: 2, active: true },
 ];
 
+/** Tomorrow in yyyy-mm-dd — the earliest bookable delivery date. */
+function tomorrow(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+const VALID_DELIVERY = {
+  recipientName: "Marco Silva",
+  recipientPhone: "+55 11 99999-0000",
+  addressLine1: "Rua das Flores 120",
+  addressLine2: "Apto 4B",
+  city: "Sao Paulo",
+  postalCode: "01310-100",
+  deliveryDate: tomorrow(),
+  giftMessage: "Happy anniversary.",
+};
+
+/** Adds valid delivery details unless the test overrides them. */
 function makeRequest(body: unknown): NextRequest {
+  const payload =
+    body && typeof body === "object" && !("delivery" in body)
+      ? { ...(body as object), delivery: VALID_DELIVERY }
+      : body;
   return new NextRequest("http://localhost/api/orders", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -144,6 +167,60 @@ describe("POST /api/orders", () => {
     const createArgs = orderCreateMock.mock.calls[0][0];
     expect(createArgs.data.status).toBe("PENDING");
     expect(createArgs.data.userId).toBe("user_1");
+    // Delivery details are persisted with the order.
+    expect(createArgs.data.recipientName).toBe("Marco Silva");
+    expect(createArgs.data.city).toBe("Sao Paulo");
+    expect(createArgs.data.giftMessage).toBe("Happy anniversary.");
+    // $298.50 clears the free-delivery threshold.
+    expect(createArgs.data.deliveryFee).toBe(0);
+  });
+
+  it("adds the delivery fee below the free-shipping threshold", async () => {
+    // 1 × $89.00 = $89.00 subtotal → under $150, so the $12 fee applies.
+    const res = await POST(
+      makeRequest({ items: [{ productId: "prod_a", quantity: 1 }] }),
+    );
+    expect(res.status).toBe(201);
+
+    const json = (await res.json()) as Record<string, unknown>;
+    expect(json.subtotal).toBe(8900);
+    expect(json.deliveryFee).toBe(1200);
+    expect(json.amount).toBe(10100);
+    // Stripe is charged the total INCLUDING delivery.
+    expect(piCreateMock).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 10100 }),
+    );
+  });
+
+  it("rejects an order with no delivery details", async () => {
+    const res = await POST(
+      new NextRequest("http://localhost/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [{ productId: "prod_a", quantity: 1 }],
+        }),
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect(orderCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a delivery date in the past", async () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const res = await POST(
+      makeRequest({
+        items: [{ productId: "prod_a", quantity: 1 }],
+        delivery: {
+          ...VALID_DELIVERY,
+          deliveryDate: yesterday.toISOString().slice(0, 10),
+        },
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect(orderCreateMock).not.toHaveBeenCalled();
+    expect(piCreateMock).not.toHaveBeenCalled();
   });
 
   it("merges duplicate product lines", async () => {

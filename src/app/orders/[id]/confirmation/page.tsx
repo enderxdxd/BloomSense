@@ -148,13 +148,96 @@ export default async function ConfirmationPage({
             ))}
           </ul>
 
-          <div className="mt-6 flex items-center justify-between border-t border-bloom-cream pt-5">
-            <span className="text-sm text-bloom-rose">Total</span>
-            <span className="font-serif text-2xl font-semibold text-bloom-primary">
-              ${Number(order.total).toFixed(2)}
-            </span>
-          </div>
+          <dl className="mt-6 space-y-2 border-t border-bloom-cream pt-5 text-sm">
+            <div className="flex justify-between">
+              <dt className="text-bloom-rose">Subtotal</dt>
+              <dd className="text-bloom-primary">
+                ${Number(order.subtotal).toFixed(2)}
+              </dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-bloom-rose">Delivery</dt>
+              <dd className="text-bloom-primary">
+                {Number(order.deliveryFee) === 0
+                  ? "Free"
+                  : `$${Number(order.deliveryFee).toFixed(2)}`}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between border-t border-bloom-cream pt-3">
+              <dt className="text-sm text-bloom-rose">Total</dt>
+              <dd className="font-serif text-2xl font-semibold text-bloom-primary">
+                ${Number(order.total).toFixed(2)}
+              </dd>
+            </div>
+          </dl>
         </div>
+
+        {order.recipientName && (
+          <section className="mt-6 rounded-3xl border border-bloom-gold/30 bg-white p-6 shadow-sm sm:p-8">
+            <h2 className="text-xs font-medium uppercase tracking-[0.28em] text-bloom-sage">
+              Delivery
+            </h2>
+            <div className="mt-4 grid gap-5 sm:grid-cols-2">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-bloom-sage">
+                  To
+                </p>
+                <p className="mt-1 text-sm text-bloom-primary">
+                  {order.recipientName}
+                  {order.recipientPhone && (
+                    <>
+                      <br />
+                      <span className="text-bloom-rose">
+                        {order.recipientPhone}
+                      </span>
+                    </>
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-bloom-sage">
+                  Address
+                </p>
+                <p className="mt-1 text-sm text-bloom-primary">
+                  {order.addressLine1}
+                  {order.addressLine2 && (
+                    <>
+                      <br />
+                      {order.addressLine2}
+                    </>
+                  )}
+                  <br />
+                  {order.city} {order.postalCode}
+                </p>
+              </div>
+              {order.deliveryDate && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-bloom-sage">
+                    Arriving
+                  </p>
+                  <p className="mt-1 text-sm text-bloom-primary">
+                    {order.deliveryDate.toLocaleDateString("en-US", {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                      timeZone: "UTC",
+                    })}
+                  </p>
+                </div>
+              )}
+              {order.giftMessage && (
+                <div className="sm:col-span-2">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-bloom-sage">
+                    Card message
+                  </p>
+                  <p className="mt-1 font-serif text-lg italic leading-relaxed text-bloom-primary">
+                    “{order.giftMessage}”
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         <p className="mt-6 text-center">
           <Link
