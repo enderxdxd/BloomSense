@@ -8,12 +8,27 @@ jest.mock("@/lib/openai", () => ({
   }),
 }));
 
+const profileCountMock: jest.Mock = jest.fn();
+const profileCreateMock: jest.Mock = jest.fn();
+const profileFindFirstMock: jest.Mock = jest.fn();
+const profileUpdateMock: jest.Mock = jest.fn();
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     user: { upsert: jest.fn().mockResolvedValue({}) },
-    floralProfile: { upsert: jest.fn().mockResolvedValue({}) },
+    floralProfile: {
+      count: (...a: unknown[]) => profileCountMock(...a),
+      create: (...a: unknown[]) => profileCreateMock(...a),
+      findFirst: (...a: unknown[]) => profileFindFirstMock(...a),
+      update: (...a: unknown[]) => profileUpdateMock(...a),
+    },
   },
 }));
+
+const getServerSessionMock: jest.Mock = jest.fn();
+jest.mock("next-auth", () => ({
+  getServerSession: (...a: unknown[]) => getServerSessionMock(...a),
+}));
+jest.mock("@/lib/auth", () => ({ authOptions: {} }));
 
 const FAKE_CATALOG = [
   {
@@ -122,6 +137,14 @@ function makeRequest(body: unknown, ip?: string): NextRequest {
 
 beforeEach(() => {
   createMock.mockReset();
+  getServerSessionMock.mockReset();
+  getServerSessionMock.mockResolvedValue(null);
+  profileCountMock.mockReset();
+  profileCountMock.mockResolvedValue(0);
+  profileCreateMock.mockClear();
+  profileFindFirstMock.mockReset();
+  profileFindFirstMock.mockResolvedValue(null);
+  profileUpdateMock.mockClear();
   process.env.OPENAI_API_KEY = "test-key";
 });
 
@@ -235,6 +258,72 @@ describe("POST /api/quiz/submit", () => {
     const res = await POST(makeRequest(VALID_INPUT));
     expect(res.status).toBe(200);
     expect(createMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("saves the quiz to a signed-in account with slots free", async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: { id: "user_1", role: "CUSTOMER" },
+    });
+    profileCountMock.mockResolvedValue(1);
+    createMock.mockResolvedValueOnce(mockCompletion(VALID_AI_RESPONSE));
+
+    const res = await POST(makeRequest(VALID_INPUT));
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as {
+      account: { saved: boolean; savedCount: number; limitReached: boolean };
+    };
+    expect(json.account).toMatchObject({
+      authenticated: true,
+      saved: true,
+      savedCount: 2,
+      limit: 3,
+      limitReached: false,
+    });
+    expect(profileCreateMock).toHaveBeenCalledTimes(1);
+    const createArgs = profileCreateMock.mock.calls[0][0] as unknown as {
+      data: { userId: string; title: string; data: unknown };
+    };
+    expect(createArgs.data.userId).toBe("user_1");
+    expect(createArgs.data.title).toBe("Modern Romance");
+    expect(createArgs.data.data).toBeDefined();
+  });
+
+  it("does not save past the 3-quiz account limit but still returns the profile", async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: { id: "user_1", role: "CUSTOMER" },
+    });
+    profileCountMock.mockResolvedValue(3);
+    createMock.mockResolvedValueOnce(mockCompletion(VALID_AI_RESPONSE));
+
+    const res = await POST(makeRequest(VALID_INPUT));
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as {
+      profile: { profileName: string };
+      account: { saved: boolean; limitReached: boolean; savedCount: number };
+    };
+    expect(json.profile.profileName).toBe("Modern Romance");
+    expect(json.account).toMatchObject({
+      saved: false,
+      limitReached: true,
+      savedCount: 3,
+    });
+    expect(profileCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps one rolling profile for anonymous sessions", async () => {
+    profileFindFirstMock.mockResolvedValue({ id: "prof_existing" });
+    createMock.mockResolvedValueOnce(mockCompletion(VALID_AI_RESPONSE));
+
+    const res = await POST(makeRequest(VALID_INPUT));
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as {
+      account: { authenticated: boolean; saved: boolean };
+    };
+    expect(json.account).toMatchObject({ authenticated: false, saved: true });
+    expect(profileUpdateMock).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "prof_existing" } }),
+    );
+    expect(profileCreateMock).not.toHaveBeenCalled();
   });
 
   it("returns 429 with Retry-After on the 6th request in a minute from the same client", async () => {

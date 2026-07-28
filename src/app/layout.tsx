@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter, Karla } from "next/font/google";
+import { Providers } from "@/components/Providers";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CartDrawer } from "@/components/shop/CartDrawer";
 import "./globals.css";
@@ -40,9 +41,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${serif.variable} ${sans.variable} ${karla.variable}`}>
       <body className="min-h-screen">
-        <SiteHeader />
-        {children}
-        <CartDrawer />
+        <Providers>
+          <SiteHeader />
+          {children}
+          <CartDrawer />
+        </Providers>
       </body>
     </html>
   );

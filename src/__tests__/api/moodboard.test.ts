@@ -10,11 +10,18 @@ const profileUpdateMock = jest.fn();
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     floralProfile: {
-      findUnique: (...a: unknown[]) => profileFindUniqueMock(...a),
+      // The route resolves the newest profile via findFirst since profiles
+      // became one-to-many per user.
+      findFirst: (...a: unknown[]) => profileFindUniqueMock(...a),
       update: (...a: unknown[]) => profileUpdateMock(...a),
     },
   },
 }));
+
+jest.mock("next-auth", () => ({
+  getServerSession: jest.fn(async () => null),
+}));
+jest.mock("@/lib/auth", () => ({ authOptions: {} }));
 
 const storageConfiguredMock = jest.fn(() => false);
 const uploadMock = jest.fn();

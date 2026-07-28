@@ -1,8 +1,9 @@
 "use client";
 
-import { ShoppingBag } from "lucide-react";
+import { CircleUserRound, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   cartItemCount,
   useCartHydrated,
@@ -17,6 +18,7 @@ const NAV_LINKS = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const { status } = useSession();
   const hydrated = useCartHydrated();
   const items = useCartStore((s) => s.items);
   const setOpen = useCartStore((s) => s.setOpen);
@@ -46,6 +48,24 @@ export function SiteHeader() {
               {link.label}
             </Link>
           ))}
+
+          {status === "authenticated" ? (
+            <Link
+              href="/account"
+              aria-label="Your account"
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-bloom-primary/80 transition hover:bg-white hover:text-bloom-primary"
+            >
+              <CircleUserRound size={17} />
+              <span className="hidden sm:inline">Account</span>
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="rounded-full border border-bloom-gold/40 px-3.5 py-1.5 text-sm text-bloom-primary transition hover:border-bloom-rose hover:bg-white"
+            >
+              Sign in
+            </Link>
+          )}
 
           <button
             type="button"

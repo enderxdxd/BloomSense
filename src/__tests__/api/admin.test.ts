@@ -27,6 +27,14 @@ jest.mock("@/lib/prisma", () => ({
   },
 }));
 
+const adminRefundMock: jest.Mock = jest.fn();
+const adminFinalizeMock: jest.Mock = jest.fn();
+jest.mock("@/lib/order-actions", () => ({
+  createStripeRefund: (...a: unknown[]) => adminRefundMock(...a),
+  finalizeCancellation: (...a: unknown[]) => adminFinalizeMock(...a),
+  RefundUnavailableError: class RefundUnavailableError extends Error {},
+}));
+
 import { POST as createProduct } from "@/app/api/admin/products/route";
 import {
   DELETE as deleteProduct,
@@ -207,5 +215,50 @@ describe("admin orders API", () => {
       { params: { id: "order_1" } },
     );
     expect(res.status).toBe(403);
+  });
+
+  it("a REFUNDED target issues a real refund then finalizes", async () => {
+    orderFindUniqueMock.mockResolvedValue({
+      id: "order_1",
+      status: "SHIPPED",
+      total: "89.00",
+      stripePaymentId: "pi_1",
+    });
+    adminRefundMock.mockResolvedValue("re_9");
+    adminFinalizeMock.mockResolvedValue({ status: "REFUNDED" });
+
+    const res = await patchOrder(
+      jsonRequest("/api/admin/orders/order_1", "PATCH", { status: "REFUNDED" }),
+      { params: { id: "order_1" } },
+    );
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as {
+      order: { status: string };
+      refundId: string;
+    };
+    expect(json.order.status).toBe("REFUNDED");
+    expect(json.refundId).toBe("re_9");
+    expect(adminRefundMock).toHaveBeenCalled();
+    expect(adminFinalizeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderId: "order_1",
+        toStatus: "REFUNDED",
+        stripeRefundId: "re_9",
+      }),
+    );
+    expect(orderUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("refunding an unpaid PENDING order stays illegal", async () => {
+    orderFindUniqueMock.mockResolvedValue({
+      id: "order_1",
+      status: "PENDING",
+    });
+    const res = await patchOrder(
+      jsonRequest("/api/admin/orders/order_1", "PATCH", { status: "REFUNDED" }),
+      { params: { id: "order_1" } },
+    );
+    expect(res.status).toBe(422);
+    expect(adminRefundMock).not.toHaveBeenCalled();
   });
 });
