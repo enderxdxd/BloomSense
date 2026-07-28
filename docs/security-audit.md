@@ -5,7 +5,7 @@ Date: 2026-07-14
 ## Phase 15B Checklist
 
 - [x] Authentication is centralized through NextAuth JWT sessions in `src/lib/auth.ts`.
-- [x] Admin routes are protected in `src/middleware.ts` and rechecked server-side in `src/app/admin/layout.tsx`.
+- [x] Admin routes are protected in `src/middleware.ts` and rechecked server-side in `src/app/admin/layout.tsx`. The middleware matcher gates both the bare `/admin` route and `/admin/:path*` (the bare route was previously uncovered — fixed 2026-07-28, verified by Playwright RBAC test).
 - [x] Protected API routes call `requireSession()` or `requireRole()` instead of trusting middleware alone.
 - [x] External JSON bodies are parsed defensively and validated with Zod before mutation.
 - [x] Order detail reads enforce owner-only access in `src/app/api/orders/[id]/route.ts`.
@@ -35,7 +35,7 @@ rg "sk_live_|sk_test_|whsec_|OPENAI_API_KEY|SUPABASE_SERVICE_ROLE_KEY|UPSTASH_RE
 
 Expected result: no matches for real secrets. Placeholder strings in CI/build docs are acceptable only when they are not real credentials.
 
-Local result for this pass: no matches in public/static bundles for Stripe key prefixes or server-only env names.
+Local result for this pass: no matches in public/static bundles for Stripe key prefixes or server-only env names. Re-verified 2026-07-28 against a fresh production build (`.next/static`) — no matches.
 
 ## Residual Risks
 
