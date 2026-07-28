@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
+import {
+  createStripeRefund,
+  finalizeCancellation,
+  RefundUnavailableError,
+} from "@/lib/order-actions";
 import { prisma } from "@/lib/prisma";
 import { OrderStatusUpdateSchema } from "@/lib/schema";
 
@@ -11,16 +16,18 @@ interface RouteContext {
 
 /**
  * Legal status transitions for the fulfillment pipeline. CONFIRMED comes
- * only from the Stripe webhook; admins move orders forward (or cancel
- * before shipment).
+ * only from the Stripe webhook; admins move orders forward, cancel before
+ * shipment, or refund any paid order (a REFUNDED target triggers a real
+ * Stripe refund plus restock).
  */
 const LEGAL_TRANSITIONS: Record<string, readonly string[]> = {
   PENDING: ["CANCELLED"],
-  CONFIRMED: ["PREPARING", "CANCELLED"],
-  PREPARING: ["SHIPPED", "CANCELLED"],
-  SHIPPED: ["DELIVERED"],
-  DELIVERED: [],
+  CONFIRMED: ["PREPARING", "CANCELLED", "REFUNDED"],
+  PREPARING: ["SHIPPED", "CANCELLED", "REFUNDED"],
+  SHIPPED: ["DELIVERED", "REFUNDED"],
+  DELIVERED: ["REFUNDED"],
   CANCELLED: [],
+  REFUNDED: [],
 };
 
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
@@ -61,6 +68,36 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       },
       { status: 422 },
     );
+  }
+
+  // A refund target is an action, not just a label: Stripe refund first,
+  // then state flip + restock in one transaction.
+  if (parsed.data.status === "REFUNDED") {
+    try {
+      const refundId = await createStripeRefund(order);
+      const updated = await finalizeCancellation({
+        orderId: order.id,
+        toStatus: "REFUNDED",
+        stripeRefundId: refundId,
+      });
+      return NextResponse.json({
+        order: {
+          id: order.id,
+          status: updated?.status ?? "REFUNDED",
+          total: Number(order.total),
+        },
+        refundId,
+      });
+    } catch (err) {
+      if (err instanceof RefundUnavailableError) {
+        return NextResponse.json({ error: err.message }, { status: 503 });
+      }
+      console.error("[admin/orders] Refund failed:", err);
+      return NextResponse.json(
+        { error: "Refund failed — order unchanged." },
+        { status: 502 },
+      );
+    }
   }
 
   const updated = await prisma.order.update({

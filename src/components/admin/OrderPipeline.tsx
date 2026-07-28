@@ -20,6 +20,7 @@ const COLUMNS = [
   "SHIPPED",
   "DELIVERED",
   "CANCELLED",
+  "REFUNDED",
 ] as const;
 
 /** Mirror of the server-side legal transition map (UI affordance only —
@@ -31,6 +32,8 @@ const NEXT_ACTION: Record<string, { to: string; label: string } | undefined> = {
 };
 
 const CANCELLABLE = new Set(["PENDING", "CONFIRMED", "PREPARING"]);
+/** Paid statuses an admin can refund (triggers a real Stripe refund). */
+const REFUNDABLE = new Set(["CONFIRMED", "PREPARING", "SHIPPED", "DELIVERED"]);
 
 export function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
   const router = useRouter();
@@ -120,6 +123,24 @@ export function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                                 className="rounded-full border border-red-200 px-2.5 py-1 text-[10px] font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
                               >
                                 Cancel
+                              </button>
+                            )}
+                            {REFUNDABLE.has(order.status) && (
+                              <button
+                                type="button"
+                                disabled={busyId === order.id}
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      "Refund the full amount to the customer's card?",
+                                    )
+                                  ) {
+                                    void transition(order.id, "REFUNDED");
+                                  }
+                                }}
+                                className="rounded-full border border-purple-200 px-2.5 py-1 text-[10px] font-medium text-purple-700 transition hover:bg-purple-50 disabled:opacity-50"
+                              >
+                                Refund
                               </button>
                             )}
                             {next && (

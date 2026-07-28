@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
+import { finalizeCancellation } from "@/lib/order-actions";
 import { prisma } from "@/lib/prisma";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
 
@@ -48,6 +49,9 @@ export async function POST(req: NextRequest) {
       case "payment_intent.payment_failed":
       case "payment_intent.canceled":
         await handlePaymentFailed(event.data.object);
+        break;
+      case "charge.refunded":
+        await handleChargeRefunded(event.data.object);
         break;
       default:
         break; // Unhandled event types are acknowledged without action.
@@ -107,5 +111,40 @@ async function handlePaymentFailed(intent: Stripe.PaymentIntent) {
   await prisma.order.updateMany({
     where: { id: orderId, status: "PENDING" },
     data: { status: "CANCELLED" },
+  });
+}
+
+/**
+ * Refunds issued OUTSIDE the app (Stripe dashboard, support tooling) still
+ * land here: flip the order to REFUNDED and restock. Refunds our own
+ * endpoints issued already finalized the order, so finalizeCancellation's
+ * terminal-state check makes this a no-op for them.
+ */
+async function handleChargeRefunded(charge: Stripe.Charge) {
+  const paymentIntentId =
+    typeof charge.payment_intent === "string"
+      ? charge.payment_intent
+      : charge.payment_intent?.id;
+
+  const orderId = charge.metadata?.orderId
+    ? charge.metadata.orderId
+    : paymentIntentId
+      ? (
+          await prisma.order.findFirst({
+            where: { stripePaymentId: paymentIntentId },
+            select: { id: true },
+          })
+        )?.id
+      : undefined;
+
+  if (!orderId) {
+    console.warn("[webhooks/stripe] refunded charge with no matching order");
+    return;
+  }
+
+  await finalizeCancellation({
+    orderId,
+    toStatus: "REFUNDED",
+    stripeRefundId: charge.refunds?.data?.[0]?.id ?? null,
   });
 }
