@@ -179,6 +179,13 @@ export function CartDrawer() {
                   >
                     Checkout
                   </Link>
+                  <Link
+                    href="/cart"
+                    onClick={() => setOpen(false)}
+                    className="mt-3 block text-center text-xs text-bloom-rose underline-offset-2 hover:underline"
+                  >
+                    View full cart
+                  </Link>
                 </footer>
               </>
             )}
