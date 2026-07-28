@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { z } from "zod";
+import { authOptions } from "@/lib/auth";
 import { getOpenAIClient } from "@/lib/openai";
 import { prisma } from "@/lib/prisma";
 import { aiLimiter, clientKey, enforceRateLimit } from "@/lib/ratelimit";
@@ -23,8 +25,12 @@ export async function POST(req: NextRequest) {
   const blocked = await enforceRateLimit(aiLimiter, clientKey(req));
   if (blocked) return blocked;
 
-  const sessionId = req.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) {
+  // Profile owner: the signed-in account when present, else the anonymous
+  // quiz session cookie. Either way the MOST RECENT profile is the target.
+  const session = await getServerSession(authOptions);
+  const ownerId =
+    session?.user?.id ?? req.cookies.get(SESSION_COOKIE)?.value ?? null;
+  if (!ownerId) {
     return NextResponse.json(
       { error: "Take the quiz first — no floral profile session found." },
       { status: 401 },
@@ -50,8 +56,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const profile = await prisma.floralProfile.findUnique({
-    where: { userId: sessionId },
+  const profile = await prisma.floralProfile.findFirst({
+    where: { userId: ownerId },
+    orderBy: { createdAt: "desc" },
   });
   if (!profile) {
     return NextResponse.json(
@@ -107,10 +114,10 @@ export async function POST(req: NextRequest) {
     try {
       const url = await uploadMoodBoard(
         Buffer.from(b64, "base64"),
-        `${sessionId}.png`,
+        `${profile.id}.png`,
       );
       await prisma.floralProfile.update({
-        where: { userId: sessionId },
+        where: { id: profile.id },
         data: { moodBoardUrl: url },
       });
       return NextResponse.json({ url, cached: false, storage: "persistent" });

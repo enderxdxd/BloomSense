@@ -11,6 +11,10 @@ export interface PipelineOrder {
   createdAt: string;
   customer: string;
   items: string[];
+  recipientName: string | null;
+  address: string;
+  deliveryDate: string | null;
+  giftMessage: string | null;
 }
 
 const COLUMNS = [
@@ -20,6 +24,7 @@ const COLUMNS = [
   "SHIPPED",
   "DELIVERED",
   "CANCELLED",
+  "REFUNDED",
 ] as const;
 
 /** Mirror of the server-side legal transition map (UI affordance only —
@@ -31,6 +36,8 @@ const NEXT_ACTION: Record<string, { to: string; label: string } | undefined> = {
 };
 
 const CANCELLABLE = new Set(["PENDING", "CONFIRMED", "PREPARING"]);
+/** Paid statuses an admin can refund (triggers a real Stripe refund). */
+const REFUNDABLE = new Set(["CONFIRMED", "PREPARING", "SHIPPED", "DELIVERED"]);
 
 export function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
   const router = useRouter();
@@ -105,6 +112,37 @@ export function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                         <p className="mt-1 line-clamp-2 text-xs text-bloom-primary/75">
                           {order.items.join(", ")}
                         </p>
+                        {order.recipientName && (
+                          <div className="mt-2 rounded-lg bg-bloom-cream/70 px-2 py-1.5">
+                            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-bloom-sage">
+                              Deliver to
+                            </p>
+                            <p className="text-xs text-bloom-primary">
+                              {order.recipientName}
+                            </p>
+                            <p className="text-[11px] leading-snug text-bloom-primary/75">
+                              {order.address}
+                            </p>
+                            {order.deliveryDate && (
+                              <p className="mt-0.5 text-[11px] font-medium text-bloom-primary">
+                                {new Date(order.deliveryDate).toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    weekday: "short",
+                                    month: "short",
+                                    day: "numeric",
+                                    timeZone: "UTC",
+                                  },
+                                )}
+                              </p>
+                            )}
+                            {order.giftMessage && (
+                              <p className="mt-1 line-clamp-2 font-serif text-[11px] italic text-bloom-rose">
+                                “{order.giftMessage}”
+                              </p>
+                            )}
+                          </div>
+                        )}
                         <div className="mt-2 flex items-center justify-between gap-2">
                           <span className="text-sm font-semibold text-bloom-primary">
                             ${order.total.toFixed(2)}
@@ -120,6 +158,24 @@ export function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                                 className="rounded-full border border-red-200 px-2.5 py-1 text-[10px] font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
                               >
                                 Cancel
+                              </button>
+                            )}
+                            {REFUNDABLE.has(order.status) && (
+                              <button
+                                type="button"
+                                disabled={busyId === order.id}
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      "Refund the full amount to the customer's card?",
+                                    )
+                                  ) {
+                                    void transition(order.id, "REFUNDED");
+                                  }
+                                }}
+                                className="rounded-full border border-purple-200 px-2.5 py-1 text-[10px] font-medium text-purple-700 transition hover:bg-purple-50 disabled:opacity-50"
+                              >
+                                Refund
                               </button>
                             )}
                             {next && (

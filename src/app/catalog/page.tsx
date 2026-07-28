@@ -36,6 +36,9 @@ function parseQuery(
   const sort = first(searchParams.sort);
   if (sort && isSortOption(sort)) query.sort = sort;
 
+  const search = first(searchParams.q);
+  if (search && search.trim() !== "") query.search = search.trim().slice(0, 80);
+
   return query;
 }
 
@@ -74,12 +77,20 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
 
         <CatalogFilters query={query} />
 
+        <p className="mt-6 text-sm text-bloom-rose">
+          {products.length === 1
+            ? "1 arrangement"
+            : `${products.length} arrangements`}
+          {query.search ? ` matching “${query.search}”` : ""}
+        </p>
+
         {products.length === 0 ? (
           <p className="mt-16 text-center text-sm text-bloom-rose">
-            No products match these filters — try widening the price range.
+            Nothing matches that — try a different search or widen the price
+            range.
           </p>
         ) : (
-          <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => (
               <li key={product.id}>
                 <ProductCard product={product} />

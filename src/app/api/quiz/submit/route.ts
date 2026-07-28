@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import type { Prisma } from "../../../../../generated/prisma/client";
+import { authOptions } from "@/lib/auth";
 import { getOpenAIClient } from "@/lib/openai";
 import { prisma } from "@/lib/prisma";
 import { getProductsByIds, listInStockForPrompt } from "@/lib/products";
@@ -96,9 +99,17 @@ export async function POST(req: NextRequest) {
     });
 
     const sessionId = req.cookies.get(SESSION_COOKIE)?.value ?? randomUUID();
-    await persistProfile(sessionId, inputResult.data, profile);
+    const account = await persistProfile(
+      sessionId,
+      inputResult.data,
+      profile,
+      recommendations,
+    );
 
-    const res = NextResponse.json({ profile, recommendations }, { status: 200 });
+    const res = NextResponse.json(
+      { profile, recommendations, account },
+      { status: 200 },
+    );
     res.cookies.set(SESSION_COOKIE, sessionId, {
       httpOnly: true,
       sameSite: "lax",
@@ -127,14 +138,73 @@ export async function POST(req: NextRequest) {
 
 type CatalogSnapshot = Awaited<ReturnType<typeof listInStockForPrompt>>;
 
+/** Saved quizzes per registered account (product requirement). */
+const SAVED_PROFILE_LIMIT = 3;
+
+interface AccountSaveState {
+  authenticated: boolean;
+  saved: boolean;
+  savedCount: number;
+  limit: number;
+  limitReached: boolean;
+}
+
+/**
+ * Signed-in users collect up to SAVED_PROFILE_LIMIT saved quizzes on their
+ * account (the quiz still works past the limit — the result just isn't
+ * saved). Anonymous visitors keep exactly one rolling profile keyed by the
+ * bloom_session cookie, as before.
+ */
 async function persistProfile(
   sessionId: string,
   input: QuizInput,
   profile: FloralProfile,
-): Promise<void> {
-  // Anonymous users are modeled as User rows keyed by the session cookie.
-  // Authenticated flows attach the profile to the real user id instead.
+  recommendations: RecommendedProduct[],
+): Promise<AccountSaveState> {
+  const state: AccountSaveState = {
+    authenticated: false,
+    saved: false,
+    savedCount: 0,
+    limit: SAVED_PROFILE_LIMIT,
+    limitReached: false,
+  };
+
   try {
+    const columns = {
+      title: profile.profileName,
+      occasion: input.occasion,
+      flowerTypes: profile.dominantFlowers,
+      palette: profile.colorPalette,
+      mood: profile.moodKeywords.join(", "),
+      arrangement: profile.recommendedArrangementStyle,
+      data: {
+        profile,
+        recommendations,
+        quiz: input,
+      } as unknown as Prisma.InputJsonValue,
+    };
+
+    const session = await getServerSession(authOptions);
+    if (session?.user?.id) {
+      state.authenticated = true;
+      const savedCount = await prisma.floralProfile.count({
+        where: { userId: session.user.id },
+      });
+      state.savedCount = savedCount;
+      if (savedCount >= SAVED_PROFILE_LIMIT) {
+        state.limitReached = true;
+        return state;
+      }
+      await prisma.floralProfile.create({
+        data: { userId: session.user.id, ...columns },
+      });
+      state.saved = true;
+      state.savedCount = savedCount + 1;
+      state.limitReached = state.savedCount >= SAVED_PROFILE_LIMIT;
+      return state;
+    }
+
+    // Anonymous: one rolling profile per session cookie.
     await prisma.user.upsert({
       where: { id: sessionId },
       update: {},
@@ -144,22 +214,27 @@ async function persistProfile(
       },
     });
 
-    const data = {
-      occasion: input.occasion,
-      flowerTypes: profile.dominantFlowers,
-      palette: profile.colorPalette,
-      mood: profile.moodKeywords.join(", "),
-      arrangement: profile.recommendedArrangementStyle,
-    };
-
-    await prisma.floralProfile.upsert({
+    const existing = await prisma.floralProfile.findFirst({
       where: { userId: sessionId },
-      update: data,
-      create: { userId: sessionId, ...data },
+      select: { id: true },
     });
+    if (existing) {
+      await prisma.floralProfile.update({
+        where: { id: existing.id },
+        data: columns,
+      });
+    } else {
+      await prisma.floralProfile.create({
+        data: { userId: sessionId, ...columns },
+      });
+    }
+    state.saved = true;
+    state.savedCount = 1;
+    return state;
   } catch (err) {
     // Persistence must not break the customer-facing flow; log loudly instead.
     console.error("[quiz/submit] Failed to persist FloralProfile:", err);
+    return state;
   }
 }
 

@@ -3,6 +3,29 @@
 ## Project Vision
 BloomSense is a production-grade, fully interactive floral e-commerce platform. Customers experience an immersive 3D landing page, take an animated multi-step quiz, receive AI-generated floral profiles with visual mood boards, browse a catalog matched to their profile, and check out with Stripe. Florists/admins manage inventory and orders through a protected dashboard. Every endpoint is secured with authentication, role-based access control, validation, and rate limiting.
 
+## Current State
+
+The platform is feature-complete. Every phase of the plan below is built,
+plus a full-commerce pass on top of it:
+
+| Area | State |
+| --- | --- |
+| Catalog | 46 seeded products, category/price filters, free-text search |
+| Cart | Zustand store, slide-over drawer and a full `/cart` page |
+| Delivery | Recipient, address, date and card message; $12 fee, free over $150 |
+| Payments | Stripe PaymentIntent + signature-verified webhook — **needs keys**, see [docs/stripe-setup.md](docs/stripe-setup.md) |
+| Cancellation | Self-service before shipping; paid orders refund in Stripe and restock |
+| Refunds | Customer, admin, and dashboard-initiated (via `charge.refunded`) |
+| Accounts | Register/login, `/account`, up to **3 saved quiz results** per account |
+| AI | Quiz → editorial profile, catalog-aware recommendations, mood boards |
+| Admin | Inventory CRUD, order pipeline with delivery details, analytics |
+| Tests | 68 unit (Jest) + 5 E2E (Playwright) |
+
+**The one thing that needs you:** Stripe keys. Without them the checkout
+degrades gracefully (503 + an explanatory notice) and everything else
+works. [docs/stripe-setup.md](docs/stripe-setup.md) walks the ~5-minute
+setup and the full test-card journey.
+
 ## Commands
 - `npm run dev` — dev server on port 3000
 - `npm run build` — production build

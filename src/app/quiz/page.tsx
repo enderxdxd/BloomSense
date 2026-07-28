@@ -5,8 +5,9 @@ import { ErrorState } from "@/components/ErrorState";
 import { FloralProfileCard } from "@/components/FloralProfileCard";
 import { FloralProfileSkeleton } from "@/components/FloralProfileSkeleton";
 import { MoodBoard } from "@/components/MoodBoard";
-import { QuizForm } from "@/components/QuizForm";
+import { QuizForm, type QuizAccountState } from "@/components/QuizForm";
 import { ProductCard } from "@/components/shop/ProductCard";
+import Link from "next/link";
 import type {
   FloralProfile,
   QuizInput,
@@ -21,6 +22,7 @@ export default function HomePage() {
   const [recommendations, setRecommendations] = useState<RecommendedProduct[]>(
     [],
   );
+  const [account, setAccount] = useState<QuizAccountState | null>(null);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
@@ -119,10 +121,11 @@ export default function HomePage() {
 
         <div className="mx-auto max-w-2xl">
           <QuizForm
-            onProfileGenerated={(p, submittedOccasion, recs) => {
+            onProfileGenerated={(p, submittedOccasion, recs, accountState) => {
               setProfile(p);
               setOccasion(submittedOccasion);
               setRecommendations(recs);
+              setAccount(accountState);
               setError("");
             }}
             onError={setError}
@@ -140,6 +143,38 @@ export default function HomePage() {
 
         {!loading && profile !== null && error === "" && (
           <>
+            {account && (
+              <div className="mx-auto mt-6 max-w-2xl">
+                {account.authenticated && account.saved && (
+                  <p className="rounded-xl border border-bloom-sage/40 bg-bloom-sage/10 px-4 py-3 text-sm text-bloom-primary">
+                    Saved to{" "}
+                    <Link href="/account" className="underline underline-offset-2">
+                      your account
+                    </Link>{" "}
+                    ({account.savedCount} of {account.limit} slots used).
+                  </p>
+                )}
+                {account.authenticated && account.limitReached && !account.saved && (
+                  <p className="rounded-xl border border-bloom-gold/40 bg-bloom-gold/10 px-4 py-3 text-sm text-bloom-primary">
+                    This result wasn&apos;t saved — your account already holds{" "}
+                    {account.limit} quizzes.{" "}
+                    <Link href="/account" className="underline underline-offset-2">
+                      Delete one
+                    </Link>{" "}
+                    to free a slot, then retake the quiz.
+                  </p>
+                )}
+                {!account.authenticated && (
+                  <p className="rounded-xl border border-bloom-gold/30 bg-white px-4 py-3 text-sm text-bloom-rose">
+                    <Link href="/register" className="underline underline-offset-2">
+                      Create an account
+                    </Link>{" "}
+                    to keep up to {account.limit} quiz results saved.
+                  </p>
+                )}
+              </div>
+            )}
+
             <FloralProfileCard
               profile={profile}
               heroImageUrl={heroUrl}

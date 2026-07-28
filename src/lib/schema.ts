@@ -140,10 +140,24 @@ export const ORDER_STATUSES = [
   "SHIPPED",
   "DELIVERED",
   "CANCELLED",
+  "REFUNDED",
 ] as const;
 
 export const OrderStatusUpdateSchema = z.object({
   status: z.enum(ORDER_STATUSES),
+});
+
+/** Where the flowers are going, and when. */
+export const DeliveryDetailsSchema = z.object({
+  recipientName: z.string().trim().min(2).max(80),
+  recipientPhone: z.string().trim().min(6).max(30),
+  addressLine1: z.string().trim().min(4).max(160),
+  addressLine2: z.string().trim().max(160).optional().or(z.literal("")),
+  city: z.string().trim().min(2).max(80),
+  postalCode: z.string().trim().min(3).max(20),
+  /** ISO date (yyyy-mm-dd); the route rejects dates in the past. */
+  deliveryDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+  giftMessage: z.string().trim().max(300).optional().or(z.literal("")),
 });
 
 export const OrderCreateSchema = z.object({
@@ -156,7 +170,10 @@ export const OrderCreateSchema = z.object({
     )
     .min(1)
     .max(20),
+  delivery: DeliveryDetailsSchema,
 });
+
+export type DeliveryDetails = z.infer<typeof DeliveryDetailsSchema>;
 
 export type OrderCreateInput = z.infer<typeof OrderCreateSchema>;
 export type QuizInput = z.infer<typeof QuizInputSchema>;

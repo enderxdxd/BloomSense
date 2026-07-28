@@ -31,6 +31,11 @@ jest.mock("@/lib/prisma", () => ({
   },
 }));
 
+const whFinalizeMock: jest.Mock = jest.fn();
+jest.mock("@/lib/order-actions", () => ({
+  finalizeCancellation: (...a: unknown[]) => whFinalizeMock(...a),
+}));
+
 import { POST } from "@/app/api/webhooks/stripe/route";
 
 function makeRequest(body: string, signature?: string): NextRequest {
@@ -143,6 +148,31 @@ describe("POST /api/webhooks/stripe", () => {
       expect.objectContaining({
         where: { id: "order_9", status: "PENDING" },
         data: { status: "CANCELLED" },
+      }),
+    );
+  });
+
+  it("flips the order to REFUNDED when Stripe reports a refunded charge", async () => {
+    constructEventMock.mockReturnValue({
+      type: "charge.refunded",
+      data: {
+        object: {
+          id: "ch_1",
+          payment_intent: "pi_1",
+          metadata: { orderId: "order_7" },
+          refunds: { data: [{ id: "re_44" }] },
+        },
+      },
+    });
+    whFinalizeMock.mockResolvedValue({ status: "REFUNDED" });
+
+    const res = await POST(makeRequest("{}", "good-sig"));
+    expect(res.status).toBe(200);
+    expect(whFinalizeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderId: "order_7",
+        toStatus: "REFUNDED",
+        stripeRefundId: "re_44",
       }),
     );
   });

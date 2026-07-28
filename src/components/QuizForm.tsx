@@ -11,11 +11,20 @@ import type {
 } from "@/lib/schema";
 import { QuizInputSchema } from "@/lib/schema";
 
+export interface QuizAccountState {
+  authenticated: boolean;
+  saved: boolean;
+  savedCount: number;
+  limit: number;
+  limitReached: boolean;
+}
+
 interface QuizFormProps {
   onProfileGenerated: (
     profile: FloralProfile,
     occasion: QuizInput["occasion"],
     recommendations: RecommendedProduct[],
+    account: QuizAccountState | null,
   ) => void;
   onError: (message: string) => void;
   onLoadingChange: (loading: boolean) => void;
@@ -164,14 +173,16 @@ export function QuizForm({
         throw new Error(body?.error ?? `Request failed with ${res.status}`);
       }
 
-      const { profile, recommendations } = (await res.json()) as {
+      const { profile, recommendations, account } = (await res.json()) as {
         profile: FloralProfile;
         recommendations: RecommendedProduct[];
+        account?: QuizAccountState;
       };
       onProfileGenerated(
         profile,
         parseResult.data.occasion,
         recommendations ?? [],
+        account ?? null,
       );
     } catch (err) {
       onError(err instanceof Error ? err.message : "Unknown error");

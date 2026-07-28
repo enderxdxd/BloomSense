@@ -57,10 +57,62 @@ test("authenticated checkout shows persisted cart summary", async ({
 
   await expect(page.getByRole("heading", { name: "Checkout" })).toBeVisible();
   await expect(page.getByText(/Blush Garden Romance/)).toBeVisible();
-  await expect(page.getByText("$178.00")).toHaveCount(2);
+
+  // 2 × $89 = $178 clears the $150 free-delivery threshold, so the
+  // itemized summary reads subtotal $178 / delivery Free / total $178.
+  const summary = page.getByRole("region", { name: /order summary/i });
+  await expect(summary.getByText("Free")).toBeVisible();
+  await expect(page.getByText("$178.00")).toHaveCount(3);
+});
+
+test("checkout requires delivery details before payment can start", async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await addSessionCookie(context, baseURL!, "CUSTOMER");
+  await page.addInitScript(() => {
+    sessionStorage.setItem(
+      "bloomsense-cart",
+      JSON.stringify({
+        state: {
+          items: [
+            {
+              id: "prod-posy",
+              slug: "the-sunday-posy",
+              name: "The Sunday Posy",
+              price: 42,
+              imageUrl: "/images/products/the-sunday-posy.jpg",
+              maxStock: 40,
+              quantity: 1,
+            },
+          ],
+        },
+        version: 0,
+      }),
+    );
+  });
+
+  await page.goto("/checkout");
+
+  // $42 is under the threshold, so the $12 fee shows and the total is $54.
+  await expect(page.getByText("$12.00")).toBeVisible();
+  await expect(page.getByText("$54.00")).toBeVisible();
+
+  // Empty delivery form → the payment step stays locked.
+  const proceed = page.getByRole("button", { name: /proceed to payment/i });
+  await expect(proceed).toBeDisabled();
   await expect(
-    page.getByText(/Payments aren't configured yet/i),
+    page.getByText(/fill in the delivery details/i),
   ).toBeVisible();
+
+  await page.getByLabel(/recipient name/i).fill("Marco Silva");
+  await page.getByLabel(/recipient phone/i).fill("+55 11 99999-0000");
+  await page.getByLabel(/^address/i).fill("Rua das Flores 120");
+  await page.getByLabel(/city/i).fill("Sao Paulo");
+  await page.getByLabel(/postal code/i).fill("01310-100");
+
+  await expect(proceed).toBeEnabled();
 });
 
 test("admin can update inventory stock with a seeded database", async ({

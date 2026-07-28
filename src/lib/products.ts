@@ -28,6 +28,8 @@ export interface CatalogQuery {
   minPrice?: number;
   maxPrice?: number;
   sort?: SortOption;
+  /** Free-text match over name and description (case-insensitive). */
+  search?: string;
 }
 
 export function isCategory(value: string): value is Category {
@@ -37,13 +39,27 @@ export function isCategory(value: string): value is Category {
 export async function listProducts(
   query: CatalogQuery = {},
 ): Promise<CatalogProduct[]> {
-  const { category, minPrice, maxPrice, sort } = query;
+  const { category, minPrice, maxPrice, sort, search } = query;
+  const term = search?.trim();
 
   const products = await withCatalogFallback("listProducts", () =>
     prisma.product.findMany({
       where: {
         active: true,
         ...(category ? { category } : {}),
+        ...(term
+          ? {
+              OR: [
+                { name: { contains: term, mode: "insensitive" as const } },
+                {
+                  description: {
+                    contains: term,
+                    mode: "insensitive" as const,
+                  },
+                },
+              ],
+            }
+          : {}),
         ...(minPrice !== undefined || maxPrice !== undefined
           ? {
               price: {

@@ -34,6 +34,12 @@ export default async function AdminOrdersPage() {
           createdAt: o.createdAt.toISOString(),
           customer: o.user.name ?? o.user.email,
           items: o.items.map((i) => `${i.product.name} × ${i.quantity}`),
+          recipientName: o.recipientName,
+          address: [o.addressLine1, o.addressLine2, o.city, o.postalCode]
+            .filter(Boolean)
+            .join(", "),
+          deliveryDate: o.deliveryDate?.toISOString() ?? null,
+          giftMessage: o.giftMessage,
         }))}
       />
     </div>

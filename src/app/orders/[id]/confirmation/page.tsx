@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
+import { CancelOrderButton } from "@/components/shop/CancelOrderButton";
 import { ClearCartOnMount } from "@/components/shop/ClearCartOnMount";
 import { OrderStatusBadge } from "@/components/shop/OrderStatusBadge";
 import { authOptions } from "@/lib/auth";
@@ -45,7 +46,11 @@ export default async function ConfirmationPage({
   // Ownership: another user's order id must never render.
   if (order.userId !== session.user.id) notFound();
 
-  const cancelled = order.status === "CANCELLED";
+  const refunded = order.status === "REFUNDED";
+  const cancelled = order.status === "CANCELLED" || refunded;
+  const cancellable = ["PENDING", "CONFIRMED", "PREPARING"].includes(
+    order.status,
+  );
   const currentStep = TIMELINE.indexOf(
     order.status as (typeof TIMELINE)[number],
   );
@@ -56,11 +61,25 @@ export default async function ConfirmationPage({
       <div className="mx-auto max-w-3xl">
         <header className="mb-8 text-center">
           <p className="text-xs font-medium uppercase tracking-[0.32em] text-bloom-sage">
-            {cancelled ? "Order cancelled" : "Thank you"}
+            {refunded
+              ? "Order refunded"
+              : cancelled
+                ? "Order cancelled"
+                : "Thank you"}
           </p>
           <h1 className="mt-2 font-serif text-4xl font-semibold text-bloom-primary">
-            {cancelled ? "Payment didn't complete" : "Your flowers are on the way"}
+            {refunded
+              ? "Your money is on its way back"
+              : cancelled
+                ? "This order was cancelled"
+                : "Your flowers are on the way"}
           </h1>
+          {refunded && (
+            <p className="mx-auto mt-3 max-w-md text-sm text-bloom-rose">
+              The full amount was refunded to your card — most banks post it
+              within 5–10 business days.
+            </p>
+          )}
           <p className="mt-3 text-sm text-bloom-rose">
             Order #{order.id.slice(-8)} ·{" "}
             {order.createdAt.toLocaleDateString("en-US", {
@@ -72,7 +91,7 @@ export default async function ConfirmationPage({
         </header>
 
         <div className="rounded-3xl border border-bloom-gold/30 bg-white p-6 shadow-sm sm:p-10">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <OrderStatusBadge status={order.status} />
             {order.status === "PENDING" && (
               <p className="text-xs text-bloom-rose">
@@ -85,6 +104,12 @@ export default async function ConfirmationPage({
                 </Link>
                 .
               </p>
+            )}
+            {cancellable && (
+              <CancelOrderButton
+                orderId={order.id}
+                paid={order.status !== "PENDING"}
+              />
             )}
           </div>
 
@@ -123,13 +148,96 @@ export default async function ConfirmationPage({
             ))}
           </ul>
 
-          <div className="mt-6 flex items-center justify-between border-t border-bloom-cream pt-5">
-            <span className="text-sm text-bloom-rose">Total</span>
-            <span className="font-serif text-2xl font-semibold text-bloom-primary">
-              ${Number(order.total).toFixed(2)}
-            </span>
-          </div>
+          <dl className="mt-6 space-y-2 border-t border-bloom-cream pt-5 text-sm">
+            <div className="flex justify-between">
+              <dt className="text-bloom-rose">Subtotal</dt>
+              <dd className="text-bloom-primary">
+                ${Number(order.subtotal).toFixed(2)}
+              </dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-bloom-rose">Delivery</dt>
+              <dd className="text-bloom-primary">
+                {Number(order.deliveryFee) === 0
+                  ? "Free"
+                  : `$${Number(order.deliveryFee).toFixed(2)}`}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between border-t border-bloom-cream pt-3">
+              <dt className="text-sm text-bloom-rose">Total</dt>
+              <dd className="font-serif text-2xl font-semibold text-bloom-primary">
+                ${Number(order.total).toFixed(2)}
+              </dd>
+            </div>
+          </dl>
         </div>
+
+        {order.recipientName && (
+          <section className="mt-6 rounded-3xl border border-bloom-gold/30 bg-white p-6 shadow-sm sm:p-8">
+            <h2 className="text-xs font-medium uppercase tracking-[0.28em] text-bloom-sage">
+              Delivery
+            </h2>
+            <div className="mt-4 grid gap-5 sm:grid-cols-2">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-bloom-sage">
+                  To
+                </p>
+                <p className="mt-1 text-sm text-bloom-primary">
+                  {order.recipientName}
+                  {order.recipientPhone && (
+                    <>
+                      <br />
+                      <span className="text-bloom-rose">
+                        {order.recipientPhone}
+                      </span>
+                    </>
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-bloom-sage">
+                  Address
+                </p>
+                <p className="mt-1 text-sm text-bloom-primary">
+                  {order.addressLine1}
+                  {order.addressLine2 && (
+                    <>
+                      <br />
+                      {order.addressLine2}
+                    </>
+                  )}
+                  <br />
+                  {order.city} {order.postalCode}
+                </p>
+              </div>
+              {order.deliveryDate && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-bloom-sage">
+                    Arriving
+                  </p>
+                  <p className="mt-1 text-sm text-bloom-primary">
+                    {order.deliveryDate.toLocaleDateString("en-US", {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                      timeZone: "UTC",
+                    })}
+                  </p>
+                </div>
+              )}
+              {order.giftMessage && (
+                <div className="sm:col-span-2">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-bloom-sage">
+                    Card message
+                  </p>
+                  <p className="mt-1 font-serif text-lg italic leading-relaxed text-bloom-primary">
+                    “{order.giftMessage}”
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         <p className="mt-6 text-center">
           <Link

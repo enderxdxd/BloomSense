@@ -41,6 +41,10 @@ export default defineConfig({
           DIRECT_URL:
             "postgresql://postgres:postgres@127.0.0.1:5432/bloomsense_e2e?schema=public",
           OPENAI_API_KEY: "sk-e2e-placeholder",
+          // Publishable key only: the checkout renders its real payment
+          // step (so delivery gating is testable) while the SERVER stays
+          // unconfigured, so no test can reach Stripe's API.
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_e2e_placeholder",
           STRIPE_SECRET_KEY: "",
           STRIPE_WEBHOOK_SECRET: "",
           UPSTASH_REDIS_REST_URL: "",

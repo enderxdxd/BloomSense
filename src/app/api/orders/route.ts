@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
+import {
+  deliveryFeeCents,
+  earliestDeliveryDate,
+  isDeliveryDateBookable,
+  latestDeliveryDate,
+} from "@/lib/delivery";
 import { prisma } from "@/lib/prisma";
 import { OrderCreateSchema } from "@/lib/schema";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
@@ -83,17 +89,40 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const totalCents = products.reduce(
+  const delivery = parsed.data.delivery;
+  if (!isDeliveryDateBookable(delivery.deliveryDate)) {
+    return NextResponse.json(
+      {
+        error: `Pick a delivery date between ${earliestDeliveryDate()} and ${latestDeliveryDate()}.`,
+      },
+      { status: 400 },
+    );
+  }
+
+  const subtotalCents = products.reduce(
     (sum, p) => sum + Math.round(Number(p.price) * 100) * quantities.get(p.id)!,
     0,
   );
+  // Fee is computed server-side from DB prices — never taken from the client.
+  const feeCents = deliveryFeeCents(subtotalCents);
+  const totalCents = subtotalCents + feeCents;
 
   const order = await prisma.$transaction(async (tx) => {
     return tx.order.create({
       data: {
         userId: auth.session.user.id,
         status: "PENDING",
+        subtotal: subtotalCents / 100,
+        deliveryFee: feeCents / 100,
         total: totalCents / 100,
+        recipientName: delivery.recipientName,
+        recipientPhone: delivery.recipientPhone,
+        addressLine1: delivery.addressLine1,
+        addressLine2: delivery.addressLine2 || null,
+        city: delivery.city,
+        postalCode: delivery.postalCode,
+        deliveryDate: new Date(`${delivery.deliveryDate}T12:00:00.000Z`),
+        giftMessage: delivery.giftMessage || null,
         items: {
           create: products.map((p) => ({
             productId: p.id,
@@ -124,6 +153,8 @@ export async function POST(req: NextRequest) {
         orderId: order.id,
         clientSecret: paymentIntent.client_secret,
         amount: totalCents,
+        subtotal: subtotalCents,
+        deliveryFee: feeCents,
       },
       { status: 201 },
     );
