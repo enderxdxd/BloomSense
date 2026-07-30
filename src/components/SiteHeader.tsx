@@ -1,6 +1,7 @@
 "use client";
 
 import { CircleUserRound, ShoppingBag } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -33,9 +34,16 @@ export function SiteHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
         <Link
           href="/"
-          className="font-serif text-lg font-semibold tracking-wide text-bloom-primary"
+          className="flex items-center"
         >
-          BloomSense
+          <Image
+            src="/brand/bloomsense-logo.svg"
+            alt="BloomSense"
+            width={124}
+            height={54}
+            className="h-10 w-auto"
+            priority
+          />
         </Link>
 
         <nav aria-label="Main" className="flex items-center gap-1 sm:gap-2">

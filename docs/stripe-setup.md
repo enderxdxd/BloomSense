@@ -17,8 +17,6 @@ requires their Stripe account.
 3. Add them to `.env.local`:
 
    ```
-   STRIPE_SECRET_KEY=sk_test_...
-   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
    ```
 
 Only the publishable key is exposed to the browser — that's what the

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import { ProductImage } from "@/components/shop/ProductImage";
@@ -77,12 +78,16 @@ function LandingNav() {
     >
       <Link
         href="/"
-        className="pointer-events-auto font-serif text-[27px] font-semibold tracking-[0.04em]"
+        className="pointer-events-auto flex items-center"
       >
-        Bloom
-        <span className="italic" style={{ color: ACCENT }}>
-          Sense
-        </span>
+        <Image
+          src="/brand/bloomsense-logo.svg"
+          alt="BloomSense"
+          width={138}
+          height={60}
+          className="h-[52px] w-auto"
+          priority
+        />
       </Link>
       <div className="pointer-events-auto hidden items-center gap-[clamp(14px,2.2vw,34px)] whitespace-nowrap text-[13px] uppercase tracking-[0.10em] md:flex">
         {NAV_ITEMS.map((item) => (
@@ -403,7 +408,10 @@ function Craft() {
           </div>
         </div>
         <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[18px]">
-          <PlaceholderTile label="Atelier — florists at work" />
+          <ProductImage
+            src="/images/editorial/florists-at-work.jpg"
+            alt="BloomSense florists arranging flowers by hand in the atelier"
+          />
         </div>
       </div>
     </section>
@@ -530,7 +538,10 @@ function Weddings() {
     <section id="weddings" className="bg-[#F1EAE0] px-6 py-[110px] sm:px-12">
       <div className="mx-auto grid max-w-[1080px] grid-cols-[repeat(auto-fit,minmax(320px,1fr))] items-center gap-16">
         <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[18px]">
-          <PlaceholderTile label="Wedding ceremony florals" />
+          <ProductImage
+            src="/images/editorial/wedding-ceremony-florals.jpg"
+            alt="Blush and ivory wedding ceremony floral installation"
+          />
         </div>
         <div className="flex flex-col gap-6">
           <div
@@ -598,12 +609,13 @@ function Visit() {
 function LandingFooter() {
   return (
     <footer className="flex flex-wrap items-center justify-between gap-6 border-t border-[#E3D9C9] px-6 py-10 sm:px-12">
-      <div className="font-serif text-[21px] font-semibold">
-        Bloom
-        <span className="italic" style={{ color: ACCENT }}>
-          Sense
-        </span>
-      </div>
+      <Image
+        src="/brand/bloomsense-logo.svg"
+        alt="BloomSense"
+        width={115}
+        height={50}
+        className="h-12 w-auto"
+      />
       <div className="flex gap-7 text-[13px] uppercase tracking-[0.1em] text-[#6B5F55]">
         <a href="/#arrangements" className="transition hover:text-[#C98A8E]">
           Arrangements
