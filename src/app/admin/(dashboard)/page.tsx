@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import type { OrderStatus } from "../../../generated/prisma/enums";
+import type { OrderStatus } from "../../../../generated/prisma/enums";
 
 export const metadata: Metadata = { title: "Dashboard — BloomSense Studio" };
 export const dynamic = "force-dynamic";

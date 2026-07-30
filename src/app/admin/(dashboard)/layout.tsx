@@ -20,8 +20,12 @@ export default async function AdminLayout({
   // Server-side role check in the layout as well — middleware is the first
   // gate, never the only one.
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) redirect("/login?callbackUrl=/admin");
-  if (!ELEVATED_ROLES.includes(session.user.role)) redirect("/");
+  if (!session?.user?.id) {
+    redirect("/admin/login?callbackUrl=/admin");
+  }
+  if (!ELEVATED_ROLES.includes(session.user.role)) {
+    redirect("/admin/login?error=forbidden&callbackUrl=/admin");
+  }
 
   return (
     <div className="flex min-h-screen bg-bloom-cream">

@@ -7,6 +7,10 @@ function isAdminPath(pathname: string): boolean {
   return pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
 }
 
+function isAdminLoginPath(pathname: string): boolean {
+  return pathname === "/admin/login";
+}
+
 function isSessionPath(pathname: string): boolean {
   return (
     pathname.startsWith("/checkout") ||
@@ -24,12 +28,17 @@ function isApiPath(pathname: string): boolean {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // The dedicated admin login page must remain reachable without a session.
+  if (isAdminLoginPath(pathname)) {
+    return NextResponse.next();
+  }
+
   const token = await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET,
   });
 
-  // Unauthenticated: API routes get 401 JSON, pages redirect to /login.
+  // Unauthenticated: API routes get 401 JSON; admin pages use their own login.
   if (!token) {
     if (isApiPath(pathname)) {
       return NextResponse.json(
@@ -37,7 +46,10 @@ export async function middleware(req: NextRequest) {
         { status: 401 },
       );
     }
-    const loginUrl = new URL("/login", req.url);
+    const loginUrl = new URL(
+      isAdminPath(pathname) ? "/admin/login" : "/login",
+      req.url,
+    );
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
@@ -52,7 +64,10 @@ export async function middleware(req: NextRequest) {
           { status: 403 },
         );
       }
-      return new NextResponse("Forbidden", { status: 403 });
+      const loginUrl = new URL("/admin/login", req.url);
+      loginUrl.searchParams.set("callbackUrl", pathname);
+      loginUrl.searchParams.set("error", "forbidden");
+      return NextResponse.redirect(loginUrl);
     }
   }
 
