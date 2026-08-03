@@ -16,6 +16,22 @@
 - [ ] `SUPABASE_URL`
 - [ ] `SUPABASE_SERVICE_ROLE_KEY`
 
+### Connection string gotchas
+
+- Paste the **value only**. A value carrying its surrounding quotes
+  (`"postgresql://…"`) or its variable name (`DATABASE_URL=postgresql://…`)
+  makes the build die with `P1013: the scheme is not recognized`, which names
+  neither the variable nor the problem. `readConnectionString` in
+  [src/lib/db-url.ts](../src/lib/db-url.ts) now repairs both, but keep the
+  stored value clean.
+- Use the **pooler** host for both variables. The direct host
+  (`db.<ref>.supabase.co`) is IPv6-only and unreachable from Vercel's build
+  runners.
+- `DIRECT_URL` must be the session pooler (port `5432`), not the transaction
+  pooler (`6543`) — `prisma migrate deploy` cannot run through pgbouncer in
+  transaction mode. If `DIRECT_URL` is unset, Prisma falls back to
+  `DATABASE_URL` and migrations fail on the pooled connection.
+
 ## Deploy Steps
 
 - [ ] Connect the GitHub repo to Vercel.

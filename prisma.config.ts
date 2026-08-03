@@ -2,11 +2,14 @@
 // npm install --save-dev prisma dotenv
 import { config } from "dotenv";
 import { defineConfig } from "prisma/config";
+import { readConnectionString } from "./src/lib/db-url";
 
 // Next.js convention: secrets live in .env.local (git-ignored).
 config({ path: ".env.local" });
 config(); // fallback to .env if present
 
+// On a host these come from the dashboard rather than a file, so they go
+// through readConnectionString to survive being pasted with quotes.
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
@@ -14,7 +17,7 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
-    directUrl: process.env["DIRECT_URL"],
+    url: readConnectionString("DATABASE_URL"),
+    directUrl: readConnectionString("DIRECT_URL"),
   },
 });
