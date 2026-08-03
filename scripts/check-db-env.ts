@@ -36,6 +36,21 @@ function describe(url: URL): string {
   return `${url.protocol}//${url.hostname}:${url.port || "(default)"}${url.pathname}${query}`;
 }
 
+/**
+ * Say which build this is. Without it a stale redeploy is indistinguishable
+ * from a fresh one, and an old log gets read as evidence about current code.
+ */
+function banner(): string {
+  const sha = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7);
+  const env = process.env.VERCEL_ENV;
+  const where = [sha && `commit ${sha}`, env && `env ${env}`].filter(Boolean);
+  return where.length > 0
+    ? `BloomSense preflight (${where.join(", ")})`
+    : "BloomSense preflight (local)";
+}
+
+console.log(banner());
+
 const problems: string[] = [];
 
 for (const check of CHECKS) {
