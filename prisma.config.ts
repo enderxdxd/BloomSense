@@ -10,6 +10,19 @@ config(); // fallback to .env if present
 
 // On a host these come from the dashboard rather than a file, so they go
 // through readConnectionString to survive being pasted with quotes.
+//
+// This config drives the CLI only — migrations, introspection, studio — and
+// never the running app, which builds its own client in src/lib/prisma.ts.
+// Every one of those operations needs a session connection, and Prisma 7's
+// Datasource type is exactly { url, shadowDatabaseUrl }: there is no
+// directUrl key, and passing one is silently ignored rather than rejected.
+// So DIRECT_URL has to be `url` here. Sending the CLI to DATABASE_URL
+// instead points migrations at the transaction pooler, where the
+// session-scoped advisory lock is never granted and `migrate deploy` hangs
+// until the build is killed.
+const migrationUrl =
+  readConnectionString("DIRECT_URL") ?? readConnectionString("DATABASE_URL");
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
@@ -17,7 +30,6 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: readConnectionString("DATABASE_URL"),
-    directUrl: readConnectionString("DIRECT_URL"),
+    url: migrationUrl,
   },
 });

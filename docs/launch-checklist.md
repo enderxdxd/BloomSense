@@ -31,6 +31,13 @@
   pooler (`6543`) — `prisma migrate deploy` cannot run through pgbouncer in
   transaction mode. If `DIRECT_URL` is unset, Prisma falls back to
   `DATABASE_URL` and migrations fail on the pooled connection.
+- **Prisma 7 has no `directUrl` in `prisma.config.ts`.** Its `Datasource`
+  type is exactly `{ url, shadowDatabaseUrl }`, and an extra `directUrl` key
+  is ignored without an error — migrations then silently run against
+  `DATABASE_URL`, take the advisory lock on the transaction pooler, and hang
+  until the build times out. `prisma.config.ts` therefore sets `url` to
+  `DIRECT_URL`: that config drives the CLI only, never the running app,
+  which builds its own client in [src/lib/prisma.ts](../src/lib/prisma.ts).
 
 ## Deploy Steps
 
