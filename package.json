@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
-    "build:deploy": "npm run prisma:generate && npm run db:migrate:deploy && npm run build",
+    "build:deploy": "npm run db:check-env && npm run prisma:generate && npm run db:migrate:deploy && npm run build",
+    "db:check-env": "tsx scripts/check-db-env.ts",
     "db:migrate:deploy": "prisma migrate deploy",
     "prisma:generate": "prisma generate",
     "start": "next start -p 3000",
