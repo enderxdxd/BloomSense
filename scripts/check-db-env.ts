@@ -76,11 +76,19 @@ for (const check of CHECKS) {
   }
 
   if (!parsed || !/^postgres(ql)?:$/i.test(parsed.protocol)) {
-    problems.push(
-      `${check.name} is not a PostgreSQL connection string. Detected scheme ` +
-        `"${connectionScheme(value)}", expected "postgresql".${firstCharHint(value)} ` +
-        `Paste the value only — no surrounding quotes, no "${check.name}=" prefix.`,
-    );
+    // Distinguish a wrong scheme from no scheme at all — the second means the
+    // stored value is a fragment, and saying "scheme" for it only misleads.
+    const detail = value.includes("://")
+      ? `Detected scheme "${connectionScheme(value)}", expected "postgresql".` +
+        `${firstCharHint(value)} Paste the value only — no surrounding quotes, ` +
+        `no "${check.name}=" prefix.`
+      : `The value contains no "://" at all, so it is a fragment rather than a ` +
+        `whole connection string (${value.length} characters). Nothing of it is ` +
+        `shown here because a fragment can start inside the password. Re-copy ` +
+        `the full string from Supabase (Project Settings > Database > ` +
+        `Connection string > URI) and substitute your password into it.`;
+
+    problems.push(`${check.name} is not a PostgreSQL connection string. ${detail}`);
     continue;
   }
 
