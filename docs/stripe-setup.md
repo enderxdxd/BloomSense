@@ -17,6 +17,8 @@ requires their Stripe account.
 3. Add them to `.env.local`:
 
    ```
+   STRIPE_SECRET_KEY=sk_test_<your-test-secret-key>
+   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_<your-test-publishable-key>
    ```
 
 Only the publishable key is exposed to the browser — that's what the
@@ -38,12 +40,44 @@ stripe listen --forward-to localhost:3000/api/webhooks/stripe
 `.env.local` as `STRIPE_WEBHOOK_SECRET` and restart `npm run dev`.
 Leave `stripe listen` running while testing.
 
-In production, create the endpoint at
-<https://dashboard.stripe.com/test/webhooks> pointing at
-`https://<your-domain>/api/webhooks/stripe`, subscribe it to
-`payment_intent.succeeded`, `payment_intent.payment_failed`,
-`payment_intent.canceled` and `charge.refunded`, then copy that
-endpoint's signing secret into the deployment environment.
+### In production (Vercel)
+
+1. **Use the stable production domain**, from Vercel > Project > Domains —
+   something like `bloom-sense.vercel.app`. Do *not* use the URL of a
+   single deployment (`bloom-sense-6dutytfjs-….vercel.app`): that address
+   is minted per deploy, so the webhook would break on the next push.
+2. **Turn off Deployment Protection for production**, under Vercel >
+   Project > Settings > Deployment Protection. While it is on, every
+   request without a Vercel session gets an HTML login page, so Stripe's
+   POST is answered with 401 and never reaches the route. This is the most
+   common reason a correctly configured webhook still fails.
+3. Create the endpoint at <https://dashboard.stripe.com/test/webhooks>
+   pointing at `https://<your-production-domain>/api/webhooks/stripe`,
+   subscribed to `payment_intent.succeeded`,
+   `payment_intent.payment_failed`, `payment_intent.canceled` and
+   `charge.refunded`.
+4. Copy that endpoint's signing secret — it is **not** the same `whsec_`
+   the CLI printed — into Vercel as `STRIPE_WEBHOOK_SECRET`, scoped to
+   Production.
+5. **Redeploy.** Environment variables are read at build and boot; an
+   existing deployment will not pick up the new value on its own.
+
+### Reading the result
+
+Stripe logs every attempt under the endpoint's *Events* tab. The response
+code says exactly what is wrong:
+
+| Response | Meaning |
+| --- | --- |
+| `200 {"received":true}` | Working. |
+| `503 Webhook is not configured.` | `STRIPE_SECRET_KEY` or `STRIPE_WEBHOOK_SECRET` missing in that environment. |
+| `400 Invalid signature.` | Wrong secret — usually the CLI's `whsec_` used in production, or the endpoint was recreated and its secret rotated. |
+| `400 Missing stripe-signature header.` | Something other than Stripe called the route. |
+| `401` / an HTML page | Deployment Protection is still on (step 2). |
+
+Stripe retries a failed delivery for about three days, so orders left
+PENDING while the secret was missing will confirm themselves once the
+configuration is fixed — no need to re-run those payments.
 
 ## 3. Walk the flow
 
