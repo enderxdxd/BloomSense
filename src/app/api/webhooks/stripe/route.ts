@@ -13,6 +13,18 @@ export const runtime = "nodejs";
 export async function POST(req: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!isStripeConfigured() || !webhookSecret) {
+    // Name the gap in the server log only. The response body goes to an
+    // unauthenticated caller, so it must not describe our configuration —
+    // but "not configured" alone gives the operator nothing to act on.
+    const missing = [
+      !isStripeConfigured() ? "STRIPE_SECRET_KEY" : null,
+      !webhookSecret ? "STRIPE_WEBHOOK_SECRET" : null,
+    ].filter((name): name is string => name !== null);
+    console.error(
+      `[webhooks/stripe] Not configured — missing ${missing.join(" and ")} ` +
+        `in this environment. Set it, then redeploy: environment variables ` +
+        `are read at boot, so an existing deployment keeps the old values.`,
+    );
     return NextResponse.json(
       { error: "Webhook is not configured." },
       { status: 503 },
