@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const BUCKET = "moodboards";
+const MOODBOARD_BUCKET = "moodboards";
+const PRODUCT_IMAGE_BUCKET = "product-images";
 
 let client: SupabaseClient | null = null;
 
@@ -29,23 +30,56 @@ export async function uploadMoodBoard(
   png: Buffer,
   path: string,
 ): Promise<string> {
+  return uploadPublicFile(MOODBOARD_BUCKET, path, png, "image/png", true);
+}
+
+/** Uploads a storefront product image and returns its permanent public URL. */
+export async function uploadProductImage(
+  image: Buffer,
+  path: string,
+  contentType: string,
+): Promise<string> {
+  return uploadPublicFile(
+    PRODUCT_IMAGE_BUCKET,
+    path,
+    image,
+    contentType,
+    false,
+  );
+}
+
+async function uploadPublicFile(
+  bucket: string,
+  path: string,
+  contents: Buffer,
+  contentType: string,
+  upsert: boolean,
+): Promise<string> {
   const supabase = getClient();
 
   let { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(path, png, { contentType: "image/png", upsert: true });
+    .from(bucket)
+    .upload(path, contents, {
+      contentType,
+      cacheControl: "31536000",
+      upsert,
+    });
 
   if (error && /bucket.*not.*found/i.test(error.message)) {
-    await supabase.storage.createBucket(BUCKET, { public: true });
+    await supabase.storage.createBucket(bucket, { public: true });
     ({ error } = await supabase.storage
-      .from(BUCKET)
-      .upload(path, png, { contentType: "image/png", upsert: true }));
+      .from(bucket)
+      .upload(path, contents, {
+        contentType,
+        cacheControl: "31536000",
+        upsert,
+      }));
   }
 
   if (error) {
-    throw new Error(`Mood board upload failed: ${error.message}`);
+    throw new Error(`Storage upload failed: ${error.message}`);
   }
 
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
 }

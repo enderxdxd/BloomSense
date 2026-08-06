@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { categoryLabel } from "@/lib/catalog-shared";
 
 export interface AdminProduct {
@@ -227,6 +227,19 @@ function ProductFormModal({ product, onClose, onSaved }: ProductFormModalProps) 
   });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState(product?.imageUrl ?? null);
+
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreview(product?.imageUrl ?? null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(imageFile);
+    setImagePreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [imageFile, product?.imageUrl]);
 
   function update(patch: Partial<typeof form>) {
     setForm((f) => ({ ...f, ...patch }));
@@ -246,6 +259,28 @@ function ProductFormModal({ product, onClose, onSaved }: ProductFormModalProps) 
     setSaving(true);
     setError("");
 
+    let imageUrl = form.imageUrl.trim();
+    if (imageFile) {
+      const uploadBody = new FormData();
+      uploadBody.append("file", imageFile);
+      const uploadRes = await fetch("/api/admin/product-images", {
+        method: "POST",
+        body: uploadBody,
+      });
+
+      if (!uploadRes.ok) {
+        const data = (await uploadRes.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        setError(data.error ?? `Image upload failed (${uploadRes.status}).`);
+        setSaving(false);
+        return;
+      }
+
+      const data = (await uploadRes.json()) as { url: string };
+      imageUrl = data.url;
+    }
+
     const payload = {
       name: form.name.trim(),
       slug: form.slug.trim(),
@@ -253,7 +288,7 @@ function ProductFormModal({ product, onClose, onSaved }: ProductFormModalProps) 
       price: Number(form.price),
       stock: Number(form.stock),
       category: form.category,
-      imageUrl: form.imageUrl.trim(),
+      imageUrl,
       active: form.active,
     };
 
@@ -365,13 +400,38 @@ function ProductFormModal({ product, onClose, onSaved }: ProductFormModalProps) 
               ))}
             </select>
           </Field>
-          <Field label="Image URL">
+          <Field label="Product image">
+            {imagePreview && (
+              <div className="relative mt-2 aspect-[4/3] w-full overflow-hidden rounded-xl bg-bloom-cream">
+                {/* A blob URL is used for the local preview before upload. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imagePreview}
+                  alt="Product image preview"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            )}
             <input
-              required
-              value={form.imageUrl}
-              onChange={(e) => update({ imageUrl: e.target.value })}
-              className={inputClass}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setError("");
+                if (file && file.size > 4 * 1024 * 1024) {
+                  setImageFile(null);
+                  e.target.value = "";
+                  setError("The image must be smaller than 4 MB.");
+                  return;
+                }
+                setImageFile(file);
+              }}
+              className={`${inputClass} file:mr-3 file:rounded-full file:border-0 file:bg-bloom-cream file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-bloom-primary`}
             />
+            <span className="mt-1 block text-xs text-bloom-primary/60">
+              JPG, PNG, or WebP, up to 4 MB.
+              {isEdit && !imageFile ? " Keep this empty to use the current image." : ""}
+            </span>
           </Field>
           <label className="flex items-center gap-2 text-sm text-bloom-primary">
             <input
